@@ -6,8 +6,12 @@ function [fig, ax, cb] = render_bifurcation_slices(slices, categories, options)
 %   OPTIONS is an optional scalar struct; see default_options below for all
 %   settings. Unknown settings are rejected to catch misspelled options.
 %   An empty output_prefix opens a figure without writing files. A nonempty
-%   prefix exports the requested formats. MATLAB R2025a or later is required
-%   for explicit export dimensions. No classification or simulation is run.
+%   prefix exports the requested formats. MATLAB R2020a or later is the
+%   compatibility target. PNG export uses sized exportgraphics on R2025a or
+%   later and print with explicit paper dimensions on earlier releases.
+%   OPTIONS.export_backend can be auto (default), exportgraphics, or print.
+%   The selected PNG backend is recorded in FIG.UserData.export_backend.
+%   No classification or simulation is run.
 
 if nargin < 3
     options = struct();
@@ -21,12 +25,16 @@ validate_options(options, count, category_count);
 
 fig = figure('Visible', 'off', 'Color', 'w', 'Name', options.figure_name, ...
     'NumberTitle', 'off', 'Units', 'centimeters', ...
-    'Position', [2, 2, options.figure_mm / 10], 'GraphicsSmoothing', 'off', ...
+    'Position', [2, 2, options.figure_mm / 10], ...
     'InvertHardcopy', 'off', 'DefaultAxesFontName', options.font_name, ...
     'DefaultAxesFontSize', options.font_size_pt, ...
     'DefaultTextFontName', options.font_name, ...
     'DefaultTextFontSize', options.font_size_pt);
 try
+    % GraphicsSmoothing has no effect in the R2025a graphics system.
+    if verLessThan('matlab', '25.1')
+        fig.GraphicsSmoothing = 'off';
+    end
     ax = axes('Parent', fig, 'Units', 'normalized', 'Position', [0, 0, 1, 1], ...
         'XLim', [0, options.figure_mm(1)], 'YLim', [0, options.figure_mm(2)], ...
         'ZLim', [-1, 1], 'YDir', 'normal', 'Visible', 'off', ...
@@ -38,7 +46,7 @@ try
     hold(ax, 'on');
     view(ax, 2);
     colormap(ax, categories.colors);
-    clim(ax, [0.5, category_count + 0.5]);
+    ax.CLim = [0.5, category_count + 0.5];
 
     row_count = ceil(count / options.columns);
     row_pitch = options.slice_height_mm + options.slice_drop_mm + options.row_gap_mm;
@@ -118,7 +126,7 @@ options = struct( ...
     'tick_length_mm', 0.6, 'border_color', [0.65, 0.72, 0.77], 'line_width_pt', 0.4, ...
     'figure_name', 'Bifurcation slices', 'visible', 'on', ...
     'output_prefix', '', 'formats', {{'fig', 'png'}}, ...
-    'resolution', 600, 'preview_width_px', []);
+    'resolution', 600, 'preview_width_px', [], 'export_backend', 'auto');
 end
 
 function options = merge_options(given)
@@ -272,6 +280,10 @@ assert(ismember(string(options.visible), ["on", "off"]), ...
     'BifurcationSlices:InvalidVisibility', 'Visible must be on or off.');
 assert(all(ismember(string(options.formats), ["fig", "png"])), ...
     'BifurcationSlices:UnsupportedFormat', 'Supported export formats are fig and png.');
+backend = text_scalar(options.export_backend, 'export_backend');
+assert(any(strcmp(backend, {'auto', 'exportgraphics', 'print'})), ...
+    'BifurcationSlices:InvalidExportBackend', ...
+    'Export backend must be auto, exportgraphics, or print.');
 assert(ismember(string(options.title_interpreter), ["none", "tex"]) && ...
     ismember(string(options.label_interpreter), ["none", "tex"]), ...
     'BifurcationSlices:InvalidInterpreter', 'Use none or tex to retain the requested font.');
@@ -382,10 +394,12 @@ fig.PaperUnits = 'centimeters';
 fig.PaperSize = options.figure_mm / 10;
 fig.PaperPosition = [0, 0, options.figure_mm / 10];
 fig.PaperPositionMode = 'manual';
+if any(strcmp(options.formats, 'png')) || ~isempty(options.preview_width_px)
+    backend = resolve_png_backend(options.export_backend);
+    fig.UserData.export_backend = backend;
+end
 if any(strcmp(options.formats, 'png'))
-    exportgraphics(fig, [prefix, '.png'], 'Resolution', options.resolution, ...
-        'Units', 'centimeters', 'Width', options.figure_mm(1) / 10, ...
-        'Height', options.figure_mm(2) / 10, 'Padding', 'figure', 'BackgroundColor', 'white');
+    export_png(fig, [prefix, '.png'], options.resolution, options, backend);
 end
 if any(strcmp(options.formats, 'fig'))
     savefig(fig, [prefix, '.fig']);
@@ -395,11 +409,36 @@ if ~isempty(options.preview_width_px)
     % Keep the physical canvas unchanged so text and colorbar layout match
     % the main export. MATLAB requires an integer resolution, so the target
     % preview width can differ slightly after DPI and pixel rounding.
-    exportgraphics(fig, [prefix, '_preview.png'], ...
-        'Resolution', max(1, round(width * 25.4 / options.figure_mm(1))), ...
+    export_png(fig, [prefix, '_preview.png'], ...
+        max(1, round(width * 25.4 / options.figure_mm(1))), options, backend);
+end
+fprintf('Output prefix: %s\n', prefix);
+end
+
+function backend = resolve_png_backend(requested)
+backend = char(requested);
+modern_export = ~verLessThan('matlab', '25.1');
+if strcmp(backend, 'auto')
+    if modern_export
+        backend = 'exportgraphics';
+    else
+        backend = 'print';
+    end
+end
+assert(~strcmp(backend, 'exportgraphics') || modern_export, ...
+    'BifurcationSlices:UnsupportedExportBackend', ...
+    'Sized exportgraphics requires MATLAB R2025a or later; use auto or print.');
+end
+
+function export_png(fig, filename, resolution, options, backend)
+% Both PNG outputs keep the full physical canvas, without automatic cropping.
+if strcmp(backend, 'exportgraphics')
+    exportgraphics(fig, filename, 'Resolution', resolution, ...
         'Units', 'centimeters', 'Width', options.figure_mm(1) / 10, ...
         'Height', options.figure_mm(2) / 10, ...
         'Padding', 'figure', 'BackgroundColor', 'white');
+else
+    % PaperPosition and PaperSize specify the full canvas on older releases.
+    print(fig, filename, '-dpng', sprintf('-r%d', resolution));
 end
-fprintf('Output prefix: %s\n', prefix);
 end

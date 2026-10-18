@@ -21,7 +21,7 @@ The default placement is full width in a one-column document. Explicit user dime
 | [Two-column document, one column](scientific-plotting/references/placements/two-column-document-single-column.md) | Time-series panels stacked vertically, each with a 60 × 12 mm internal plot box. The canvas includes additional space calculated from the actual labels. Other plot types require explicit layout dimensions. |
 | [Two-column document, spanning both columns](scientific-plotting/references/placements/two-column-document-spanning.md) | Explicit layout dimensions are required for every plot type. |
 
-These presets are project defaults. Confirm any additional journal requirements and resolve missing dimensions before plotting. Slice layouts in either two-column placement require complete geometry, including the canvas, slices, spacing, margins, and colorbar.
+These presets are this skill's bundled defaults. Confirm any additional journal requirements and resolve missing dimensions before plotting. Slice layouts in either two-column placement require complete geometry, including the canvas, slices, spacing, margins, and colorbar.
 
 ## Current Plotting Workflows
 
@@ -39,16 +39,46 @@ The time-series and phase/waveform workflows guide the agent in writing a reprod
 
 ## Requirements
 
-- **MATLAB R2025a or later** for the bundled slice renderer and demo, which use explicit export dimensions.
+- **MATLAB R2020a or later** is the compatibility target. This is a target, not a claim that every release has been tested; see the release-specific verification status below.
 - **Times New Roman** installed for figure text. The default main text size is 8 pt, and the slice renderer reports an error if the requested font is unavailable.
 - **Poppler tools**, including `pdfinfo` and `pdftoppm`, for page-size checks and PDF-derived previews in the time-series and phase/waveform workflows. The slice demo does not require them.
 - **An agent that supports local skills**, such as Codex, when using the guided workflow. The MATLAB slice scripts can also be called directly.
 
 The skill instructions, detailed workflow references, MATLAB code comments, and usage examples use American English.
 
+### MATLAB Compatibility
+
+| MATLAB release | Slice PNG export with `export_backend = 'auto'` | Verification status |
+| --- | --- | --- |
+| R2020a–R2024b | Full-canvas `print`, using explicit paper dimensions and DPI | Compatibility target; not run in these releases |
+| R2025a, version 25.1.0.2943329, macOS | Sized `exportgraphics`; the `print` backend can also be selected explicitly | 7 slice regression checks passed on 2026-10-18, covering both PNG backends |
+| Other newer releases | Sized `exportgraphics` | Compatibility target; not run in these releases |
+
+The renderer uses `ax.CLim` rather than the newer `clim` function name. It selects an export path that preserves the full physical canvas, including margins. The sizing and padding options used by [`exportgraphics`](https://www.mathworks.com/help/matlab/ref/exportgraphics.html) require R2025a or later; older releases use [`print`](https://www.mathworks.com/help/matlab/ref/print.html) instead. Explicit `export_backend = 'exportgraphics'` therefore requires R2025a or later. `export_backend = 'print'` is available for compatibility checks and manual selection on newer releases too.
+
+Running the `print` backend on R2025a checks that export path on R2025a; it does not constitute an execution test on R2020a–R2024b. The line-plot workflows also permit full-canvas vector PDF export through `print` when the installed release cannot preserve the required canvas with `exportgraphics`. Final PDF page dimensions and internal plot-box dimensions still require separate measurement and, where necessary, correction for MATLAB coordinate rounding; choosing a backend alone does not establish dimensional acceptance.
+
+### Environment Checks
+
+Before rendering, check the font in MATLAB:
+
+```matlab
+assert(any(strcmpi(listfonts, 'Times New Roman')), ...
+    'Install Times New Roman before rendering these figures.');
+```
+
+If the font is missing, install it through your operating system's font manager or explicitly agree on a different font for the task. Do not silently substitute one. For the line-plot PDF checks, install Poppler through your platform's package manager and make its executables available on `PATH`. Verify them from your terminal:
+
+```text
+pdfinfo -v
+pdftoppm -v
+```
+
+These PDF tools are not needed for the slice renderer or its demo.
+
 ## Use as a Codex Skill
 
-Copy the entire `scientific-plotting/` directory into your research project's `.agents/skills/` directory. From this repository's root:
+Copy the entire `scientific-plotting/` directory into your research project's `.agents/skills/` directory. You can copy the folder with your file manager on any platform. The following shell commands are an alternative on macOS and Linux, run from this repository's root:
 
 ```bash
 mkdir -p /path/to/your/project/.agents/skills
@@ -57,6 +87,8 @@ cp LICENSE /path/to/your/project/.agents/skills/scientific-plotting/
 ```
 
 For a user-wide installation, use `~/.agents/skills/` as the destination and include the license in the installed skill folder. Keep its `SKILL.md`, `references/`, `scripts/`, `assets/`, and `agents/` files together. See the [official Codex skill documentation](https://developers.openai.com/codex/skills/) for discovery locations and invocation details. If the newly installed skill does not appear, restart Codex.
+
+For an agent without local skill discovery, provide `scientific-plotting/SKILL.md` as the workflow instructions, with access to the supplied data and a MATLAB runtime.
 
 Invoke `$scientific-plotting` and specify the plot type, placement, source files, variable mappings, units, desired ranges, and output location. Include file order, colors, category definitions, and physical dimensions when relevant. For example:
 
@@ -102,7 +134,7 @@ skill_root = '/absolute/path/to/scientific-plotting-skill/scientific-plotting';
 addpath(fullfile(skill_root, 'scripts'), '-begin');
 which render_bifurcation_slices
 
-output_dir = fullfile(tempdir, 'scientific_plotting_demo');
+output_dir = tempname(tempdir);
 [fig, ax, cb] = demo_bifurcation_slices(3, output_dir);
 ```
 
@@ -113,7 +145,7 @@ The demo creates three small synthetic MAT files, reloads them through an explic
 - `demo_3_slices.png`, the main 600 dpi export.
 - `demo_3_slices_preview.png`, a smaller preview approximately 1,000 pixels wide.
 
-The no-argument call, `demo_bifurcation_slices()`, creates **five** slices and writes to `output/bifurcation_slice_demo/` under MATLAB's current working directory. The explicit output directory above keeps generated files outside the installed skill.
+The no-argument call, `demo_bifurcation_slices()`, creates **five** slices in a new unique directory under MATLAB's `tempdir` and prints that directory's path. The default does not depend on MATLAB's current working directory. An explicitly supplied output directory is used as provided; keep it outside the installed skill.
 
 These synthetic inputs demonstrate plotting and layout only. They are not simulation results, measurements, or evidence of dynamical behavior.
 
@@ -144,6 +176,7 @@ Frequently used options include:
 | `figure_mm`, `colorbar_mm` | Canvas `[width, height]` and colorbar `[left, bottom, width, height]`, in millimeters |
 | `x_limits`, `y_limits`, `x_ticks`, `y_ticks`, `x_label`, `y_label` | Coordinate display and labeling |
 | `output_prefix`, `formats`, `resolution`, `preview_width_px` | Output path without an extension, FIG/PNG format selection, resolution, and optional preview width |
+| `export_backend` | `auto` (default), `exportgraphics`, or `print`; the selected PNG backend is recorded in `fig.UserData.export_backend` |
 
 An empty `output_prefix` creates a figure without writing files. With a nonempty prefix, the defaults export FIG and PNG at 600 dpi. The renderer's layout defaults implement the one-column-document placement; provide complete placement-specific geometry for either two-column context.
 
@@ -167,14 +200,27 @@ Extend the two dimensions independently:
 
 The current package supplies the three plot types and three article placements listed above. Additional plot families and presentation-oriented placements remain future extensions.
 
+## Run the Regression Checks
+
+The repository includes MATLAB checks for both PNG export backends, layouts, category-cell preservation, FIG editability, invalid inputs, and demo output directories:
+
+```matlab
+repo_root = '/absolute/path/to/scientific-plotting-skill';
+results = runtests(fullfile(repo_root, 'tests'));
+assert(all([results.Passed]), 'Plotting regression checks failed.');
+```
+
+Tests require Times New Roman and write outputs to new temporary directories. The main output directory is printed so that high-resolution files can also be inspected visually. Running these checks in an older MATLAB release is required before claiming that release has been tested.
+
 ## Repository Layout
 
 ```text
 .
 ├── .gitignore
-├── AGENTS.md
 ├── LICENSE
 ├── README.md
+├── tests/
+│   └── test_bifurcation_slices.m
 └── scientific-plotting/
     ├── SKILL.md
     ├── agents/
@@ -188,10 +234,6 @@ The current package supplies the three plot types and three article placements l
         ├── demo_bifurcation_slices.m
         └── render_bifurcation_slices.m
 ```
-
-## Repository Maintenance
-
-See [AGENTS.md](AGENTS.md) for repository maintenance and publication instructions. These instructions are separate from the working-project instructions followed when using the skill.
 
 ## License
 

@@ -1,6 +1,6 @@
 # Full-Width Placement in a One-Column Document
 
-This file applies to full-width figures in a one-column document and is the default choice when the user does not specify a placement. These values are default presets for the current project, not universal standards for all one-column journals; dimensions explicitly provided by the user in the current turn override the corresponding preset fields.
+This file applies to full-width figures in a one-column document and is the default choice when the user does not specify a placement. These values are this skill's bundled defaults, not universal standards for all one-column journals; dimensions explicitly provided by the user in the current turn override the corresponding preset fields.
 
 ## 1. Four Groups of Pure Time-Series Plots
 

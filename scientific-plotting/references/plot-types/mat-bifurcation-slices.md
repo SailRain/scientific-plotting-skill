@@ -2,14 +2,14 @@
 
 Read this file only when rendering existing MAT two-dimensional categorical planes, such as bifurcation maps or basins of attraction, as sheared slices. Also apply the [scientific plotting workflow](../../SKILL.md) and the selected placement file. This plot type includes a [renderer](../../scripts/render_bifurcation_slices.m), a [synthetic demo](../../scripts/demo_bifurcation_slices.m), and a [default visual preview](../../assets/default-three-slice-preview.png).
 
-The current workflow focuses on faithfully displaying existing data. Do not run simulations, reclassify data, design classification criteria, or infer dynamical mechanisms. MATLAB R2025a or later supports the explicit export-dimension options used by the renderer; verify compatibility before using other versions.
+The current workflow focuses on faithfully displaying existing data. Do not run simulations, reclassify data, design classification criteria, or infer dynamical mechanisms. The compatibility target is MATLAB R2020a or later. The renderer selects a full-canvas export backend for the installed release, as described in Section 8; this target does not imply that every release has been tested. See the repository README for the releases actually tested.
 
 ## 1. Data Sources and Applicability
 
 - Inspect the user-specified MAT files, metadata, and applicable existing programs first. Do not infer categories, fields, units, parameters, figure count, or grids from reference examples.
 - The current renderer supports numeric category codes and one shared discrete colorbar. Separate colorbars, continuous numerical planes, RGB images, legends, or missing-value masks require selecting or extending the implementation for the specific task. Do not treat each continuous value as a category or infer classifications from RGB colors.
 - Write a small data-adaptation entry point in the user's working directory and save results to an explicit output directory. Treat the original MAT files as read-only. Do not write real data or generated results into the skill directory, and preserve applicable existing program interfaces.
-- Before running, load only this skill's `scripts` directory or one explicitly selected tool directory, and verify the resolved path with `which render_bifurcation_slices` to avoid mixing in functions with the same name from locations such as `PROG6`.
+- Before running, load only this skill's `scripts` directory or one explicitly selected tool directory, and verify the resolved path with `which render_bifurcation_slices` to avoid using a same-name function elsewhere on the MATLAB path.
 
 ## 2. Verify Data and Display Semantics
 
@@ -92,6 +92,7 @@ Physical dimensions are specified solely by the selected placement file. The ren
 | `border_color`, `line_width_pt` | Parallelogram border color and line width |
 | `output_prefix` | Output path and filename without an extension; an empty value creates a figure only |
 | `formats`, `resolution` | `fig`, `png`, and export resolution |
+| `export_backend` | `auto` (default), `exportgraphics`, or `print`; selects full-canvas PNG export as described in Section 8 |
 | `visible`, `preview_width_px` | Figure visibility and optional preview width |
 
 When text overlaps, adjust spacing, margins, the colorbar, and the canvas first, retaining the default font and font size. For all field definitions, use the help text and `default_options` in the [renderer](../../scripts/render_bifurcation_slices.m).
@@ -109,7 +110,8 @@ slices(1).title = 'Example parameter label';
 slices(1).source_file = input_file;
 options.x_label = '{\it A}, mA';
 options.y_label = '{\it f}, Hz';
-options.output_prefix = fullfile(program_dir, 'output', 'my_slices', 'my_slices');
+output_dir = tempname(tempdir);
+options.output_prefix = fullfile(output_dir, 'my_slices');
 [fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
 ```
 
@@ -119,16 +121,17 @@ The actual entry point must explicitly configure the variables in this example; 
 skill_root = '/path/to/scientific-plotting';
 addpath(fullfile(skill_root, 'scripts'), '-begin');
 which render_bifurcation_slices
-[fig, ax, cb] = demo_bifurcation_slices();
-[fig, ax, cb] = demo_bifurcation_slices(3, fullfile(pwd, 'output', 'three_slices'));
+output_dir = tempname(tempdir);
+[fig, ax, cb] = demo_bifurcation_slices(3, output_dir);
 ```
 
-By default, the demo draws five small synthetic categorical planes. The figure count and output directory may also be specified. When no output directory is provided, it writes to `output/bifurcation_slice_demo/` under the current working directory. It verifies only the plotting interface and layout, does not depend on real research data, and does not constitute simulation results or evidence of dynamical behavior.
+By default, the demo draws five small synthetic categorical planes. The figure count and output directory may also be specified. When no output directory is provided, it creates a unique directory under MATLAB's `tempdir`, outside the installed skill directory, and reports that path. An explicitly supplied output directory is used as provided. It verifies only the plotting interface and layout, does not depend on real research data, and does not constitute simulation results or evidence of dynamical behavior.
 
 ## 8. Export, Acceptance Checks, and Reporting
 
 - When `output_prefix` is empty, create a figure only. Otherwise, the default exports are an editable FIG and a native MATLAB `600 dpi` PNG. The current renderer supports only `fig`, `png`, or both. This plot type does not require a PDF, and its PNG does not originate from a PDF.
 - Export with the physical width and height specified by the placement and a white background. Optional `preview_width_px` generates a lower-resolution copy for visual inspection. The preview retains the main figure's physical dimensions and reduces only DPI; it does not replace the high-resolution PNG.
+- `export_backend = 'auto'` uses `exportgraphics` with explicit dimensions and padding on R2025a or later, and full-canvas `print` export on R2020a–R2024b. `export_backend = 'print'` explicitly selects the compatibility path, including on newer releases. `export_backend = 'exportgraphics'` requires R2025a or later because older releases lack the required sizing controls. The main PNG and optional preview use the same selected backend. The `print` path explicitly sets `PaperUnits`, `PaperSize`, `PaperPosition`, and `PaperPositionMode` to preserve the configured canvas; it does not substitute tight cropping for physical dimensions.
 - Check file order, sources, matrix orientation, original-code-to-display-index mappings, and all samples, with particular attention to nonuniform grids and the last row and column. Invalid codes, incorrect dimensions, and cropping display ranges must produce explicit errors.
 - Verify category names, aliases, colors, order, and alignment with colorbar centers. Do not validate real data against the example category table.
 - Check consistency between exported pixels, physical dimensions, and DPI, allowing small differences from integer DPI and pixel rounding. Reopen the FIG to confirm that slices, text, and the colorbar remain editable.

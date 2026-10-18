@@ -12,12 +12,6 @@ This file applies to figures that occupy one column in a two-column document wit
 - When space is insufficient, do not shrink the `60 mm × 12 mm` internal plot boxes, reduce the default `8 pt` font specified in the main workflow, or tolerate text clipping or overlap; enlarge the necessary surrounding space. If the target column width imposes an additional hard limit that cannot be satisfied simultaneously, report the conflict and obtain new dimension requirements.
 - `split-y` adds only outer whitespace on the right and does not change the `60 mm × 12 mm` internal plot box. Handle the variables, units, ranges, and ticks on the left and right axes according to the plot-type file and the user-confirmed configuration.
 
-### QA References for Outer Bounding Dimensions
-
-- With the specific text, ticks, and glyphs in the current example, the outer bounding box of a single panel using `each-panel + single-y` is approximately `67.116 mm × 19.199 mm`.
-- With the specific text, ticks, and glyphs in the current example, the outer bounding box of a single panel using `each-panel + split-y` is approximately `72.206 mm × 19.199 mm`.
-- These values serve only to identify obvious layout anomalies; they vary with tick strings, variable names, units, and glyph widths and are not fixed canvases, default margins, or dimension acceptance targets. Only the internal plot box is subject to mandatory dimension acceptance checks.
-
 ## 2. Other Plot Types
 
 For plot types other than pure time series, the following information sufficient to determine the layout must be obtained from the user's current instructions or a confirmed configuration before plotting:

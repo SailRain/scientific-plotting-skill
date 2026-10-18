@@ -1,6 +1,6 @@
 ---
 name: scientific-plotting
-description: "In the current manuscript project, plot existing time-domain numerical data as pure time series or paired phase trajectories and waveforms, or render existing MAT categorical planes as sheared slices; arrange, export, and verify figures for the target placement. Do not use for generating simulation data, modifying models, numerical solving, designing classification criteria, or analyzing dynamical mechanisms."
+description: "Plot existing time-domain numerical data as pure time series or paired phase trajectories and waveforms, or render existing MAT categorical planes as sheared slices; arrange, export, and verify figures for the target placement. Do not use for generating simulation data, modifying models, numerical solving, designing classification criteria, or analyzing dynamical mechanisms."
 ---
 
 # Scientific Plotting Workflow
@@ -32,7 +32,7 @@ For each task, determine the plot type first, then the final placement, and read
 
 ## 3. Common Graphics and Implementation Rules
 
-1. All visible text, including tick labels, axis labels, panel labels, parameter text, colorbar text, and any user-requested titles or legends, must use `Times New Roman`. Main text defaults to `8 pt`; subscripts may use a smaller size as needed for layout. Use another font size when explicitly specified by the user. Report a missing font; do not silently substitute one.
+1. All visible text, including tick labels, axis labels, panel labels, parameter text, colorbar text, and any user-requested titles or legends, must use `Times New Roman`. Main text defaults to `8 pt`; subscripts may use a smaller size as needed for layout. Use another font size when explicitly specified by the user. Check font availability before rendering; report a missing font and resolve it before claiming typography acceptance. Do not silently substitute one.
 2. Use a white canvas by default. Italicize variables and subscripts that represent variables; use upright type for units and descriptive subscripts. Follow the user's requirements for specific symbols, capitalization, and glyphs.
 3. Determine colors from the user's requirements, verified metadata, and the selected plot-type file. Do not transfer semantic meanings from historical figures or other datasets.
 4. Retain reproducible MATLAB scripts. Construct paths with `mfilename('fullpath')` and explicit configuration rather than relying on manual directory changes. Use English names for new files, functions, and variables. Write new or modified comments, prompts, figure titles, and labels in American English, preserving mathematical symbols as required by the task.

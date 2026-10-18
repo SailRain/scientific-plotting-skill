@@ -3,7 +3,8 @@ function [fig, ax, cb] = demo_bifurcation_slices(slice_count, output_dir)
 %   DEMO_BIFURCATION_SLICES() draws five synthetic category slices.
 %   DEMO_BIFURCATION_SLICES(N) draws N slices in at most three columns.
 %   DEMO_BIFURCATION_SLICES(N, OUTPUT_DIR) selects the output folder.
-%   The default output folder is output/bifurcation_slice_demo under pwd.
+%   The default output folder is a new unique directory under TEMPDIR,
+%   independent of the current working directory. Its path is printed.
 %   These small MAT files demonstrate plotting only. They are not simulation
 %   results, measured data, or evidence of any dynamical behavior.
 
@@ -15,7 +16,7 @@ validateattributes(slice_count, {'numeric'}, ...
 
 %% Example configuration: replace these settings for an actual data source.
 if nargin < 2 || isempty(output_dir)
-    output_dir = fullfile(pwd, 'output', 'bifurcation_slice_demo');
+    output_dir = tempname(tempdir);
 end
 categories.codes = [-4, 7, 42];
 categories.labels = {'Zone A', 'Zone B', 'Zone C'};
