@@ -1,0 +1,58 @@
+# Phase Trajectory and Time-Series Composite Plot Workflow
+
+Read this file only when each group has a phase trajectory on the left and a time-series waveform on the right; also apply the [Scientific Plotting Workflow](../../SKILL.md) and the selected placement file.
+
+## 1. Data, Variables, and Independent Time Windows
+
+- Inspect the user-specified data files directly to identify the delimiter, headers, time column, and coordinate variables for both plot types; check that the target columns contain finite numeric values and time is strictly increasing, and configure columns from the actual headers or confirmed column order without assuming a fixed number of columns or fixed column names.
+- Preserve the user-specified or confirmed mapping for file order and panel labels. For four groups without another specified arrangement, place groups 1, 2, 3, and 4 at the upper left, lower left, upper right, and lower right, respectively.
+- For each group, configure the time column, phase-trajectory x-axis variable, phase-trajectory y-axis variable, time-series y-axis variable, and their units. The phase-trajectory y-axis variable need not be the same as the time-series signal; neither column counts nor column names are fixed.
+- Phase trajectories must use paired values from the same instant and connect them in sampling order, without sorting by the x-axis variable. If the two variables come from different records, verify their time correspondence first; do not directly combine unaligned data by row number.
+- Configure the phase-trajectory and time-series windows separately, with per-group overrides allowed. When the phase-trajectory window is unspecified, default to that group's time-series window and state this in the configuration description and results.
+- Phase-trajectory windows support the full record, a finite interval `[start, end]`, or a specified start through the end of the record; use each file's own final time as its end, without fixing it to the endpoint of a past example.
+- Include only original phase-trajectory points that meet its own time conditions; do not include adjacent points outside the window or fill in endpoints independently. If a boundary falls between two samples, use the first or last original sample within the interval and retain information about the actual sampling coverage.
+- The corresponding data must cover any specified finite time interval; do not count portions without data as covered. Each trajectory requiring connected lines must contain at least two valid original samples.
+
+## 2. Shared or Independent Y-Axes
+
+Make this determination for each group; identical variable names or unit strings do not establish that the physical quantities are the same.
+
+| Condition | Display and Range |
+| --- | --- |
+| The physical quantity, units, scale, and transformation are identical, and the user has not requested separate scaling | Share the y-axis by default, showing y-axis numbers, the variable, and units only on the left phase plot; use exactly the same `YLim`, `YTick`, and axis scale on both sides. |
+| The physical quantity, units, scale, or transformation differ, or the user requests different y-axis ranges | Show complete y-axes on both plots, with independent ranges and ticks; do not use `linkaxes(..., 'y')`. |
+
+- The shared range must cover the combined extrema of the y-axis data within the phase-trajectory and time-series windows, with padding added according to Section 3 of this file; do not set the range using only a shorter time-series window and thereby clip the phase trajectory. Configure different groups independently.
+- When sharing the y-axis, retain the plot box and corresponding tick marks on the right time-series plot while hiding its duplicate y-axis numbers and labels; `linkaxes(..., 'y')` may be used to keep the axes linked.
+- When displaying independent y-axes, place the phase-plot y-axis on the left and the time-series y-axis on the right by default. First recalculate plot boxes and spacing within the selected placement's canvas; if readability and freedom from clipping cannot be maintained, report the conflict and ask the user for new dimensions. Do not silently change an explicitly configured canvas.
+- When units differ, do not automatically convert or normalize the data or present the axes as shared; convert only when the user explicitly requests it and the conversion relationship has been confirmed, and label the result correctly.
+
+## 3. Composite Structure, Axes, and Lines
+
+- In each group, place the phase plot on the left and the time series on the right; give the two internal plot boxes equal heights and align their top and bottom edges. Equal height is a physical dimension requirement; it does not require `axis equal` or equal x-axis and y-axis data scales.
+- Use a white axes background with black plot boxes, ticks, and text; default to a four-sided box with the grid off, and do not add titles or legends. Set the box line width to `0.35 pt`, direct ticks inward, and use `TickLength = [0.008, 0.008]`.
+- Use `PositionConstraint = 'innerposition'`; plot box dimensions in the placement refer to the internal plot box, excluding ticks and labels.
+- Show x-axis tick labels, variables, and units on all phase plots and time-series plots, including the top row; do not apply the top-row omission rules for pure time-series plots.
+- The default phase-plot line width is `0.4 pt`, and the default time-series line width is `0.6 pt`; configure them independently and use the user's settings when explicitly specified.
+- Use colors specified by the user or confirmed in the current conversation; phase plots and time series may have separate color configurations. If the user specifies only one curve color, apply it to all curves in the task; if there is no basis for choosing a color, ask rather than infer it from the signal type.
+- User-specified ranges take precedence; if they clip the selected data and the user has not explicitly requested a local view, report the clipping. When no range is specified, add approximately `3%` of the span at each end based on the actual extrema within the corresponding window; use a small range appropriate to the magnitude for a constant signal.
+- Determine the phase-plot x-axis range from the data within its own window and choose ticks for the actual range, without reusing fixed positive and negative tick values from other data; configure time-series ticks based on the window and available width, without creating large empty areas merely to obtain round numbers.
+- By default, use only one panel label per group and place it in the corresponding time-series plot; follow the user's instructions when separate labels are explicitly requested. Preserve the panel-label text mapping specified by the user or confirmed in the current conversation; do not generate labels automatically from filenames or adopt the automatic `(a)`, `(b)` rules for MAT slices. If the task requires panel labels but their mapping cannot be verified, confirm it first. By default, place labels inside the lower-right corner of the plot box at approximately `(0.985, 0.055)`; if a label obscures a curve, first try the upper-right corner at approximately `(0.985, 0.955)`, then fine-tune its position based on the actual empty area. Panel labels must not be clipped, have background boxes, or be used to expand axis ranges.
+
+## 4. Compact Subscripts and X-Axis Label Alignment
+
+- When the user adopts the voltage notation confirmed in this project, use an italic `v` and a compact, curved `φ` subscript; the italic Times New Roman Unicode `U+03C6` glyph may be used. Italicize the capacitor variable `C` in `v_C` and keep the unit `V` upright. Typeset other variables and subscripts according to their meanings and the user's requirements.
+- Align the main text of the left and right x-axis labels in each group to the same physical baseline, with the baseline at the same position relative to the bottom edge of each plot box; also check the actual spacing between labels and tick labels and between the upper and lower groups.
+- Start with standard text typesetting. If MATLAB's default TeX subscripts produce excessive spacing or vertical drop, the main variable, subscript, and unit may be typeset separately, centered as a complete label based on actual text widths, and then adjusted for subscript size and offset. Do not center only the main variable and thereby shift the complete label away from the axis center.
+- For `8 pt` main text, subscript tuning may start at `6 pt`; this value is only a default starting point and must not be generalized into a mandatory parameter for all text sizes, symbols, or fonts.
+- Identical position parameters do not guarantee alignment in the actual rendering. Verify glyphs, main-text baselines, and spacing in the final PDF and its high-resolution rendering; do not resolve clipping at the page edge by moving only the phase-plot label upward.
+
+## 5. Plot-Specific Acceptance Checks
+
+- Verify the variables, units, time conditions, and samples for the phase trajectory and time series separately, and confirm that the phase trajectory contains no points outside its window, mismatched samples, or reordered samples.
+- Verify that plot boxes in each group have equal heights and aligned top and bottom edges; when sharing the y-axis, confirm identical ranges, ticks, and scales with the combined extrema fully covered; when independent, confirm complete y-axis numbers and labels on each plot without incorrect linking.
+- Check that all x-axis labels and ticks are visible, complete labels are centered, main-text baselines are aligned, subscripts are compact, and units have the correct style. When adding a right y-axis, check its distance from adjacent groups and the page edge.
+- Choose an empty location for each panel label based on the actual curves and current ranges; do not copy label coordinates from a particular group in a past figure.
+- Use a white figure background and the `painters` renderer to export a single-page vector PDF through `exportgraphics` with `ContentType = 'vector'` and a white background. Preserve the full canvas and margins specified by the placement so that automatic tight cropping does not alter the layout.
+- The final PDF is the basis for layout acceptance. Use `pdfinfo` to check the page against the configured dimensions; render a PNG from that PDF at a minimum of `600 dpi` through `pdftoppm`. The final preview must come from the same accepted PDF. Check whether the PDF retains vector curves rather than judging by its extension alone.
+- In the final PDF and its high-resolution rendering from the same source, check all plot boxes, ticks, variables, units, subscripts, and panel labels to confirm that there is no clipping, overlap, curves obscured by other elements, or unnecessary empty space.
