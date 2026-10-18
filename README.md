@@ -35,7 +35,29 @@ The time-series and phase/waveform workflows guide the agent in writing a reprod
 
 ![Three synthetic categorical slices using the default one-column placement](scientific-plotting/assets/default-three-slice-preview.png)
 
-*The bundled preview shows three synthetic slices. Its category names and colors illustrate the layout and have no universal scientific meaning.*
+*The bundled preview shows three synthetic slices, explicitly selecting three colors from the SailRain palette. Its category names and colors illustrate the layout and have no universal scientific meaning.*
+
+## Color Schemes
+
+Color schemes are shared configuration alongside the two workflow dimensions. The default and currently available scheme is **SailRain**, identified by `sailrain`. Its RGB definitions are maintained in one [scheme data file](scientific-plotting/assets/color-schemes/sailrain.json):
+
+| Plot role | SailRain colors |
+| --- | --- |
+| Categorical slices | A 13-color palette adapted from SailRain's two-dimensional bifurcation plots; choose distinguishable colors for the task rather than automatically taking the first N rows |
+| Time-domain waveforms | Red, blue, and black, in that priority order; keep each configured curve's color consistent across panels |
+| Phase trajectories | A darker cyan, defined separately from the categorical palette's bright cyan |
+
+Explicit user colors and confirmed task configuration take precedence. Without a specified color configuration, use SailRain. Record the selected palette rows and their mapping to the verified category display order or curve identities. The source category labels in the scheme are provenance only and must not be used to infer category meanings or numeric codes. If more distinct colors are needed than the relevant palette provides, confirm additional colors or another scheme; do not silently cycle, interpolate, or invent colors.
+
+After adding the skill's `scripts/` folder to the MATLAB path, load the scheme with:
+
+```matlab
+scheme = load_color_scheme(); % Equivalent to load_color_scheme('sailrain').
+selected_palette_rows = [1, 2, 12]; % Explicit selection used by the synthetic demo.
+categories.colors = scheme.categorical_colors(selected_palette_rows, :);
+```
+
+Supply the matching verified `categories.codes` and `categories.labels` before calling the renderer. The loader also returns `waveform_colors` and `phase_trajectory_color` for task-specific line-plot scripts. The renderer continues to accept explicit RGB arrays and does not load a scheme itself. Fonts, line widths, axes, colorbar placement, and export settings retain their existing rules. See the [color-scheme reference](scientific-plotting/references/color-schemes.md) for the interface, selection rules, and instructions for adding a scheme.
 
 ## Requirements
 
@@ -51,7 +73,7 @@ The skill instructions, detailed workflow references, MATLAB code comments, and 
 | MATLAB release | Slice PNG export with `export_backend = 'auto'` | Verification status |
 | --- | --- | --- |
 | R2020a–R2024b | Full-canvas `print`, using explicit paper dimensions and DPI | Compatibility target; not run in these releases |
-| R2025a, version 25.1.0.2943329, macOS | Sized `exportgraphics`; the `print` backend can also be selected explicitly | 7 slice regression checks passed on 2026-10-18, covering both PNG backends |
+| R2025a, version 25.1.0.2943329, macOS | Sized `exportgraphics`; the `print` backend can also be selected explicitly | 14 regression checks passed on 2026-10-19: 7 slice checks and 7 color-scheme checks, covering both PNG backends |
 | Other newer releases | Sized `exportgraphics` | Compatibility target; not run in these releases |
 
 The renderer uses `ax.CLim` rather than the newer `clim` function name. It selects an export path that preserves the full physical canvas, including margins. The sizing and padding options used by [`exportgraphics`](https://www.mathworks.com/help/matlab/ref/exportgraphics.html) require R2025a or later; older releases use [`print`](https://www.mathworks.com/help/matlab/ref/print.html) instead. Explicit `export_backend = 'exportgraphics'` therefore requires R2025a or later. `export_backend = 'print'` is available for compatibility checks and manual selection on newer releases too.
@@ -147,6 +169,8 @@ The demo creates three small synthetic MAT files, reloads them through an explic
 
 The no-argument call, `demo_bifurcation_slices()`, creates **five** slices in a new unique directory under MATLAB's `tempdir` and prints that directory's path. The default does not depend on MATLAB's current working directory. An explicitly supplied output directory is used as provided; keep it outside the installed skill.
 
+The demo loads the SailRain scheme and explicitly selects palette rows `[1, 2, 12]`, retaining the gray, bright cyan, and magenta colors shown in the bundled preview. This selection is an example, not a rule for all three-category datasets.
+
 These synthetic inputs demonstrate plotting and layout only. They are not simulation results, measurements, or evidence of dynamical behavior.
 
 ## Slice Renderer Interface
@@ -200,9 +224,11 @@ Extend the two dimensions independently:
 
 The current package supplies the three plot types and three article placements listed above. Additional plot families and presentation-oriented placements remain future extensions.
 
+To add a color scheme, add its JSON definition and document it in the shared [color-scheme reference](scientific-plotting/references/color-schemes.md), with appropriate verification. Only SailRain is bundled; additional authors' schemes can be added when their colors are supplied.
+
 ## Run the Regression Checks
 
-The repository includes MATLAB checks for both PNG export backends, layouts, category-cell preservation, FIG editability, invalid inputs, and demo output directories:
+The repository includes MATLAB checks for color-scheme data and loading, explicit color overrides, both PNG export backends, layouts, category-cell preservation, FIG editability, invalid inputs, and demo output directories:
 
 ```matlab
 repo_root = '/absolute/path/to/scientific-plotting-skill';
@@ -220,18 +246,23 @@ Tests require Times New Roman and write outputs to new temporary directories. Th
 ├── LICENSE
 ├── README.md
 ├── tests/
-│   └── test_bifurcation_slices.m
+│   ├── test_bifurcation_slices.m
+│   └── test_color_schemes.m
 └── scientific-plotting/
     ├── SKILL.md
     ├── agents/
     │   └── openai.yaml
     ├── assets/
+    │   ├── color-schemes/
+    │   │   └── sailrain.json
     │   └── default-three-slice-preview.png
     ├── references/
+    │   ├── color-schemes.md
     │   ├── placements/
     │   └── plot-types/
     └── scripts/
         ├── demo_bifurcation_slices.m
+        ├── load_color_scheme.m
         └── render_bifurcation_slices.m
 ```
 

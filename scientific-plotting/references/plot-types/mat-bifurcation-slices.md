@@ -46,20 +46,24 @@ The returned `fig` is an editable figure, `ax` is the shared physical drawing ax
 
 ## 4. Category Mapping and Shared Colorbar
 
-- Determine category counts, names, colors, and order from the user's requirements and the data. Do not prescribe specific categories or a maximum period. When no colors are specified, choose distinguishable colors and record the configuration without adopting the meanings of example codes.
+- Determine category counts, names, and order from the user's requirements and verified data. Do not prescribe specific categories or a maximum period. Resolve colors through the [shared color-scheme rules](../color-schemes.md): preserve explicit user colors and confirmed mappings; otherwise, select distinguishable colors from the selected scheme, with SailRain as the default. Do not require the first N colors or match scheme provenance labels to data categories. Record the selected palette indices and actual RGB values against the confirmed category display order.
 - The colorbar may retain the complete verified category definition or list only the categories actually present in the current data. When the user does not specify, retain complete category metadata if available to support comparison; otherwise, use the verified categories actually present. Both approaches must cover every plotted sample.
 - `codes`, `labels`, and `colors` correspond one to one, with their order determining the colorbar order from bottom to top. The renderer explicitly maps original codes to `1:N`, using `CLim = [0.5, N+0.5]` and `Ticks = 1:N` to align labels with the centers of color blocks.
 - When the user specifies display aliases, retain source names for data verification and change only `labels`. Reorder codes, labels, and colors together.
 - A shared colorbar is appropriate only when category semantics and color mappings are consistent across slices. Equivalent meanings with different codes may be explicitly mapped in the adapter. Do not force different meanings into one definition to share a colorbar.
 - By default, place the colorbar on the right, center labels on the color blocks, omit short tick marks, and fix `AxisLocation = 'out'`. For many categories or long labels, increase colorbar space, margins, or canvas height without reducing the default font size.
 
-The following illustrates the interface only and assigns no universal meaning to the codes or colors:
+The following illustrates the interface only and assigns no universal meaning to the codes or colors. It loads the default SailRain scheme and explicitly selects the demo's three colors; another dataset may use a different subset:
 
 ```matlab
+scheme = load_color_scheme();
+palette_indices = [1, 2, 12];
 categories.codes = [-4, 7, 42];
 categories.labels = {'Zone A', 'Zone B', 'Zone C'};
-categories.colors = [0.45,0.45,0.45; 0,1,1; 1,0.10,1];
+categories.colors = scheme.categorical_colors(palette_indices, :);
 ```
+
+The adapter selects colors and passes the explicit RGB array to the renderer. The renderer still requires `categories.colors`; it does not select a scheme or infer category semantics.
 
 ## 5. Complete Cells and Slice Rendering
 
@@ -125,7 +129,7 @@ output_dir = tempname(tempdir);
 [fig, ax, cb] = demo_bifurcation_slices(3, output_dir);
 ```
 
-By default, the demo draws five small synthetic categorical planes. The figure count and output directory may also be specified. When no output directory is provided, it creates a unique directory under MATLAB's `tempdir`, outside the installed skill directory, and reports that path. An explicitly supplied output directory is used as provided. It verifies only the plotting interface and layout, does not depend on real research data, and does not constitute simulation results or evidence of dynamical behavior.
+By default, the demo draws five small synthetic categorical planes. It loads SailRain and selects categorical palette rows `[1, 2, 12]`, retaining the gray, bright cyan, and magenta colors of the bundled preview. The figure count and output directory may also be specified. When no output directory is provided, it creates a unique directory under MATLAB's `tempdir`, outside the installed skill directory, and reports that path. An explicitly supplied output directory is used as provided. It verifies only the plotting interface and layout, does not depend on real research data, and does not constitute simulation results or evidence of dynamical behavior.
 
 ## 8. Export, Acceptance Checks, and Reporting
 

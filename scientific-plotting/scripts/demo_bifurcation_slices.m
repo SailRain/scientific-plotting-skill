@@ -20,7 +20,9 @@ if nargin < 2 || isempty(output_dir)
 end
 categories.codes = [-4, 7, 42];
 categories.labels = {'Zone A', 'Zone B', 'Zone C'};
-categories.colors = [0.45, 0.45, 0.45; 0.00, 1.00, 1.00; 1.00, 0.10, 1.00];
+scheme = load_color_scheme();
+% Explicit demo choices preserve the gray, cyan, and magenta appearance.
+categories.colors = scheme.categorical_colors([1, 2, 12], :);
 options.columns = min(3, slice_count);
 options.x_limits = [0, 1];
 options.y_limits = [10, 50];

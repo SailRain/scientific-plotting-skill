@@ -21,7 +21,7 @@ Read this file only when creating pure time-series plots of signals over time; a
 - Use a white axes background with black plot boxes, ticks, and text; default to a four-sided box with the grid off, and do not add titles or legends. Set the box line width to `0.35 pt`, direct ticks inward, and use `TickLength = [0.008, 0.008]`.
 - Use `PositionConstraint = 'innerposition'`; plot box dimensions in the placement refer to the internal plot box, excluding ticks and labels.
 - The default waveform line width is `0.75 pt`; use the user's setting when explicitly specified.
-- Use colors specified by the user or confirmed in the current conversation. If the user specifies only one curve color, apply it to all curves in the task; if there is no basis for choosing a color, ask rather than infer it from the signal type or treat colors from past examples as defaults.
+- Follow the [shared color-scheme rules](../color-schemes.md). If the user specifies only one curve color, apply it to all curves in the task. Otherwise, preserve confirmed task colors or use the selected scheme's waveform colors, with SailRain as the default. Assign colors by waveform curve identity in the centralized task configuration and keep that mapping consistent across panels; do not infer a color from a physical variable name. Record the mapping and resolve any need for additional distinct colors as described in the shared reference.
 - Use the required window for the time axis, with simple, evenly spaced ticks that are not crowded. Use `t, s` and `v_C, V` only when the time unit is confirmed to be seconds and the signal is confirmed to be a capacitor voltage in volts; configure other variables or units for the task.
 
 ### X-Axis Text Modes

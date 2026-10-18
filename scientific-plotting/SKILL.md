@@ -22,6 +22,8 @@ For each task, determine the plot type first, then the final placement, and read
    - For a figure spanning both columns in a two-column document, read [spanning both columns in a two-column document](references/placements/two-column-document-spanning.md).
 3. Physical dimensions explicitly provided in the user's current request override the corresponding default fields in the placement file; fields without overrides retain their existing presets. If the selected placement has no default dimensions, confirm the missing dimensions. Do not borrow values from another placement.
 
+Color schemes are shared configuration across these two dimensions. Read the [color-scheme reference](references/color-schemes.md) when selecting curve or category colors. Use the selected scheme, or SailRain by default, unless explicit user colors or a confirmed task configuration override it. A scheme changes colors only; it does not change typography, geometry, colorbar placement, or export requirements.
+
 ## 2. Common Configuration and Input Principles
 
 1. Inspect the original files, metadata, and applicable existing programs specified by the user directly. Do not substitute screenshots, historical outputs, or older data with similar names. Configure input fields, columns, matrix orientation, variables, units, figure count, and order from the actual source or confirmed instructions.
@@ -34,7 +36,7 @@ For each task, determine the plot type first, then the final placement, and read
 
 1. All visible text, including tick labels, axis labels, panel labels, parameter text, colorbar text, and any user-requested titles or legends, must use `Times New Roman`. Main text defaults to `8 pt`; subscripts may use a smaller size as needed for layout. Use another font size when explicitly specified by the user. Check font availability before rendering; report a missing font and resolve it before claiming typography acceptance. Do not silently substitute one.
 2. Use a white canvas by default. Italicize variables and subscripts that represent variables; use upright type for units and descriptive subscripts. Follow the user's requirements for specific symbols, capitalization, and glyphs.
-3. Determine colors from the user's requirements, verified metadata, and the selected plot-type file. Do not transfer semantic meanings from historical figures or other datasets.
+3. Resolve colors using the [shared color-scheme rules](references/color-schemes.md) and the selected plot-type file. Preserve explicit user colors and confirmed task mappings; otherwise, use the selected scheme or the SailRain default. Record the scheme and actual color assignments in the task configuration. Do not transfer semantic meanings from historical figures, scheme provenance labels, or other datasets.
 4. Retain reproducible MATLAB scripts. Construct paths with `mfilename('fullpath')` and explicit configuration rather than relying on manual directory changes. Use English names for new files, functions, and variables. Write new or modified comments, prompts, figure titles, and labels in American English, preserving mathematical symbols as required by the task.
 5. Use output names specified by the user; otherwise, use English `snake_case` names that describe the figure content. Do not overwrite unrelated files with the same name; report conflicts first. Do not write real data or generated results into the installed skill directory.
 
