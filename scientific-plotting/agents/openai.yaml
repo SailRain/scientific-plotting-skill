@@ -1,4 +1,4 @@
 interface:
   display_name: "Scientific Plotting"
-  short_description: "Independent 2D plots, time series, phase traces, and MAT slices"
-  default_prompt: "Use $scientific-plotting to create a publication-ready independent 2D coordinate plot, pure time-series figure, paired phase-trajectory-and-waveform figure, or MAT classification-slice figure from the specified existing data and target placement."
+  short_description: "Bifurcation/LE pairs, 2D plots, time/phase traces, and slices"
+  default_prompt: "Use $scientific-plotting to create a publication-ready one-dimensional bifurcation and Lyapunov exponent comparison, independent 2D coordinate plot, pure time-series figure, paired phase-trajectory-and-waveform figure, or MAT classification-slice figure from the specified existing data and target placement."

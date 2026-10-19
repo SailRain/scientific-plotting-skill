@@ -1,6 +1,6 @@
 # Single-Column Placement in a Two-Column Document
 
-This file applies to figures that occupy one column in a two-column document without spanning both columns. Exact dimensions or complete coordinate positions provided by the user take precedence over the corresponding defaults in this file. Apart from the pure time-series and independent coordinate-plot presets below, no default physical dimensions currently exist for other plot types; do not borrow the canvas, plot boxes, or coordinate positions from the full-width placement for a one-column document.
+This file applies to figures that occupy one column in a two-column document without spanning both columns. Exact dimensions or complete coordinate positions provided by the user take precedence over the corresponding defaults in this file. Apart from the pure time-series, independent coordinate-plot, and bifurcation and Lyapunov exponent comparison presets below, no default physical dimensions currently exist for other plot types; do not borrow the canvas, plot boxes, or coordinate positions from the full-width placement for a one-column document.
 
 ## 1. Pure Time-Series Plots
 
@@ -22,18 +22,29 @@ Applies to the [independent two-dimensional coordinate-plot workflow](../plot-ty
 - Preserve the internal box and font size when more surrounding space is needed. Check the complete canvas against any known target column width. A `60 mm` box alone does not guarantee that every set of surrounding labels fits a particular column. If the content and required padding exceed that limit, report the required and available widths and resolve the conflicting requirements with the user; do not shrink the box, reduce the font, clip text, or silently scale the exported figure to fit.
 - All physical dimensions and font sizes refer to the exported file at its native size. Enlarging surrounding whitespace does not enlarge the internal plot box.
 
-## 3. Other Plot Types
+## 3. One-Dimensional Bifurcation and Lyapunov Exponent Comparisons
 
-For plot types other than pure time series and independent coordinate plots, the following information sufficient to determine the layout must be obtained from the user's current instructions or a confirmed configuration before plotting:
+Applies to the [one-dimensional bifurcation and Lyapunov exponent comparison workflow](../plot-types/bifurcation-lyapunov.md). Each comparison group contains a bifurcation plot above a Lyapunov exponent plot.
+
+- Default to one comparison group. The upper internal plot box defaults to `60 mm × 30 mm`; the lower internal plot box defaults to `60 mm × 15 mm`, excluding tick text, axis labels, legends, panel labels, and other surrounding text. Dimensions explicitly specified by the user override the corresponding fields. Align the upper and lower frames on their left and right borders; resolve any conflict between explicit dimensions and the requested alignment. Use `PositionConstraint = 'innerposition'` and measure each actual box between the frame-line centers in the final PDF, within `0.1 mm` of each configured dimension. Aspect-ratio constraints must not silently reduce the actual drawing boxes.
+- This placement has no default for two comparison groups side by side or another multiple-group arrangement; obtain an explicit task configuration before arranging multiple groups in one figure.
+- Apply the plot-type file's conditions for sharing the horizontal axis within the group. When those conditions hold, reserve horizontal-axis text only below the lower box. Otherwise reserve complete horizontal-axis text below both boxes. Keep the two vertical axes independently labeled and configured.
+- Measure all visible text in its final font, including negative tick values, subscripts, and any requested outside legends or annotations. Derive the vertical gap within the group, the four margins, and the complete canvas from those extents plus explicitly configured safety padding. Record the resulting dimensions in the task script and set the final PDF page size explicitly. Retain the common `Times New Roman`, `8 pt` main-text default; no fixed canvas or gap is inferred from a screenshot or borrowed from another placement.
+- Preserve the internal boxes and font size when more surrounding space is needed. Check the complete canvas against any known target column width. A `60 mm` box alone does not guarantee that every set of surrounding labels fits a particular column. If the content and required padding exceed that limit, report the required and available widths and resolve the conflict with the user; do not shrink the boxes, reduce the font, clip text, or silently scale the exported figure to fit. If the available width is unknown, report the final native canvas dimensions rather than promising that all possible labels fit a particular column.
+- All physical dimensions and font sizes refer to the exported file at its native size. Enlarging surrounding whitespace does not enlarge the internal plot boxes.
+
+## 4. Other Plot Types
+
+For plot types other than pure time series, independent coordinate plots, and bifurcation and Lyapunov exponent comparisons, the following information sufficient to determine the layout must be obtained from the user's current instructions or a confirmed configuration before plotting:
 
 - Canvas width and height;
 - Internal width and height of each type of plot box;
 - Arrangement of multiple plots and the necessary margins and gaps, or the complete position of each plot box.
 
-## 4. MAT Sheared Slices
+## 5. MAT Sheared Slices
 
 For MAT sheared slices, also obtain and explicitly configure the number of columns per row, width and height of each slice, downward drop, gap between slices, row gap where applicable, all four margins, complete canvas dimensions, and colorbar dimensions or an equivalent complete position. Explicitly set inapplicable gaps to `0`. Do not call the renderer if these fields are incomplete, because its omitted values correspond to the one-column document placement. Label, tick-text, title, and tick-mark offsets may start from the plot-type defaults but must be rechecked at the actual dimensions of this placement; explicitly override the corresponding offset fields if crowding or unbalanced proportions occur.
 
-## 5. Dimension Overrides and Missing Information
+## 6. Dimension Overrides and Missing Information
 
-Ask only about fields that remain undetermined and affect the layout. When the user provides exact dimensions or complete coordinate positions, follow the user's current requirements; once the dimensions are obtained, apply both the main workflow and the selected plot-type file's rules. Unless otherwise specified, pure time-series and independent coordinate plots use their respective internal plot-box presets in this file, with the remaining dimensions calculated from the actual text; when dimensions for other plot types are incomplete, do not borrow another placement's presets to proceed with plotting.
+Ask only about fields that remain undetermined and affect the layout. When the user provides exact dimensions or complete coordinate positions, follow the user's current requirements; once the dimensions are obtained, apply both the main workflow and the selected plot-type file's rules. Unless otherwise specified, pure time-series plots, independent coordinate plots, and bifurcation and Lyapunov exponent comparisons use their respective internal plot-box presets in this file, with the remaining dimensions calculated from the actual text; when dimensions for other plot types are incomplete, do not borrow another placement's presets to proceed with plotting.

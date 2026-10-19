@@ -31,6 +31,10 @@ The waveform palette has three rows in red, blue, then black priority. Assign th
 
 This rule applies to both pure time series and the waveform side of phase/waveform composites. Independent 2D coordinate plots also reuse `waveform_colors` as their default ordered series palette, without implying that their coordinates represent time-domain waveforms. An explicit single-color request still applies to all curves as described above.
 
+### Bifurcation and Lyapunov Exponent Comparisons
+
+Reuse `waveform_colors` for this plot type as an ordered general series palette. Configure the bifurcation sample series first and then the confirmed exponent identities in their specified order. Keep the identity-to-color mapping across upper/lower panels and side-by-side groups, without restarting the palette for each panel or assigning colors from variable names. Explicit user colors and the existing palette-capacity rules still apply. The black zero reference is an annotation, not a measured series, and does not consume a palette row or enter the legend.
+
 ### Phase Trajectories
 
 Use `phase_trajectory_color` for phase trajectories unless overridden. SailRain defines this separately from the categorical palette's bright cyan; do not replace it with MATLAB's shorthand cyan color. Multiple trajectories may use this same default color when distinct colors are not required.

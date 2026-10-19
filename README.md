@@ -8,7 +8,7 @@ The skill is organized along two independent dimensions: **plot type** and **pla
 
 | Dimension | Responsibility | Current options |
 | --- | --- | --- |
-| Plot type | Input interpretation, plotting behavior, data checks, and export requirements | Independent 2D coordinate plots; pure time series; paired phase trajectory and waveform; categorical bifurcation slices |
+| Plot type | Input interpretation, plotting behavior, data checks, and export requirements | Independent 2D coordinate plots; pure time series; paired phase trajectory and waveform; one-dimensional bifurcation and Lyapunov exponent comparison; categorical bifurcation slices |
 | Placement | Target document context, physical dimensions, panel arrangement, margins, and spacing | Full width in a one-column document; one column in a two-column document; spanning both columns in a two-column document |
 
 For each task, select one plot type and one placement. The agent reads the corresponding reference from each dimension and applies both together with the common rules in [SKILL.md](scientific-plotting/SKILL.md). For example, the same time-series workflow can produce a full-width figure for a one-column article or a vertically stacked figure occupying one column of a two-column article.
@@ -17,24 +17,31 @@ The default placement is full width in a one-column document. Explicit user dime
 
 | Placement | Available presets |
 | --- | --- |
-| [One-column document, full width](scientific-plotting/references/placements/one-column-document-full-width.md) | Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested, with a text-derived canvas. Four time-series panels on a 148 × 49 mm canvas; four phase/waveform pairs with shared vertical axes within each pair on a 148 × 55 mm canvas; three slices on a 135 × 55.5 mm canvas, with additional rows and height calculated for larger slice layouts. |
-| [Two-column document, one column](scientific-plotting/references/placements/two-column-document-single-column.md) | One independent plot with a 60 × 45 mm internal box and a text-derived canvas. Time-series panels stacked vertically, each with a 60 × 12 mm internal plot box and additional space calculated from the actual labels. Other plot types require explicit layout dimensions. |
-| [Two-column document, spanning both columns](scientific-plotting/references/placements/two-column-document-spanning.md) | Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested, with a text-derived canvas. Other plot types require explicit layout dimensions. |
+| [One-column document, full width](scientific-plotting/references/placements/one-column-document-full-width.md) | Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 60 × 30 mm upper box and 60 × 15 mm lower box per group: one group by default, or two groups side by side when requested. Both use a text-derived canvas. Four time-series panels on a 148 × 49 mm canvas; four phase/waveform pairs with shared vertical axes within each pair on a 148 × 55 mm canvas; three slices on a 135 × 55.5 mm canvas, with additional rows and height calculated for larger slice layouts. |
+| [Two-column document, one column](scientific-plotting/references/placements/two-column-document-single-column.md) | One independent plot with a 60 × 45 mm internal box. One bifurcation/Lyapunov comparison group with a 60 × 30 mm upper box and 60 × 15 mm lower box. Both use a text-derived canvas. Time-series panels stacked vertically, each with a 60 × 12 mm internal plot box and additional space calculated from the actual labels. Other plot types require explicit layout dimensions. |
+| [Two-column document, spanning both columns](scientific-plotting/references/placements/two-column-document-spanning.md) | Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 60 × 30 mm upper box and 60 × 15 mm lower box per group: one group by default, or two groups side by side when requested. Both use a text-derived canvas. Other plot types require explicit layout dimensions. |
 
 These presets are this skill's bundled defaults. Confirm any additional journal requirements and resolve missing dimensions before plotting. Slice layouts in either two-column placement require complete geometry, including the canvas, slices, spacing, margins, and colorbar.
 
 For independent plots, the internal box excludes tick text, axis labels, legends, and surrounding annotations. Its 60 × 45 mm dimensions and the default 8 pt Times New Roman text are preserved while margins and any interplot gap are calculated from the actual text. The complete canvas is not fixed at an illustrative overall width such as 70 mm or at another plot type's preset width. Check it against any known available document width; report a conflict rather than shrinking the box or text. A single independent plot may remain compact even when the placement allows the full document width.
+
+For bifurcation/Lyapunov comparisons, each group aligns the left and right edges of its upper and lower internal boxes. These boxes also exclude external text and retain their configured dimensions and 8 pt Times New Roman text while vertical gaps, intergroup gaps, margins, and the canvas are calculated from actual text extents and configured padding. Two requested groups align their corresponding upper and lower boxes while retaining independent ranges between groups. Check the complete canvas against any known available width; report insufficient space without shrinking the boxes or text. Without a specified width, report the native canvas dimensions rather than assuming that any labels fit a column.
 
 ## Current Plotting Workflows
 
 | Plot type | Included implementation | Final outputs |
 | --- | --- | --- |
 | [Independent 2D coordinate plots](scientific-plotting/references/plot-types/independent-2d.md) | Workflow instructions for a task-specific MATLAB script using existing paired coordinates, complete independent axes, and a single or explicitly requested side-by-side arrangement, including scenario guidance for high-density bifurcation scatter plots | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
+| [One-Dimensional Bifurcation and Lyapunov Exponent Comparison](scientific-plotting/references/plot-types/bifurcation-lyapunov.md) | Workflow instructions for a task-specific MATLAB script with existing bifurcation samples above one or more confirmed exponent curves, conditional shared horizontal axes, and a visible zero reference line | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Pure time series](scientific-plotting/references/plot-types/pure-time-series.md) | Workflow instructions for a task-specific MATLAB script, including time windows, panel labels, and single or explicitly requested split vertical axes | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Paired phase trajectory and waveform](scientific-plotting/references/plot-types/phase-waveform.md) | Workflow instructions for a task-specific MATLAB script, with a phase trajectory on the left and a waveform on the right, independently configured time windows, and shared or independent vertical axes | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Categorical bifurcation slices](scientific-plotting/references/plot-types/mat-bifurcation-slices.md) | A reusable MATLAB renderer and a synthetic demo for existing categorical MAT planes, including bifurcation maps and basins of attraction | Editable FIG and a 600 dpi PNG by default; an optional smaller PNG preview |
 
-The independent-plot, time-series, and phase/waveform workflows guide the agent in writing a reproducible script for the supplied data. A one-panel count alone does not select the independent-plot route or change an existing specialized workflow's presets. The bundled slice renderer supports FIG and PNG export.
+Of the five plot types, the independent-plot, time-series, phase/waveform, and bifurcation/Lyapunov workflows guide the agent in writing a reproducible task-specific MATLAB script for the supplied data; they do not bundle general renderers. A one-panel count alone does not select the independent-plot route or change an existing specialized workflow's presets. A pure bifurcation scatter request remains an Independent 2D scenario; a request to compare it with Lyapunov exponents selects the dedicated comparison workflow. The bundled slice renderer supports FIG and PNG export.
+
+The comparison workflow plots existing data without computing bifurcations or Lyapunov exponents. Its upper scatter plot starts with 0.20 pt filled circles, no edges, and no connecting lines, preserving all samples. Its lower plot includes all confirmed exponent curves by default and a black short-dashed zero reference line, starting at approximately 0.8 mm dashes and 0.5 mm gaps with a 0.35 pt line width at native size; ordinary grids are off. A shared horizontal axis is used only when the two views have the same parameter meaning, units, transformation, and scale. Their parameter sampling grids may differ without interpolation or forced row pairing.
+
+Label the exponent axis `LLE` when drawing only the confirmed largest exponent, or `LEs` when drawing multiple exponents; do not infer that an arbitrary single series is the largest. Unless the user specifies a scale, choose a display multiplier only when it improves readability and append it to the label, such as `LEs, ×10^3`, with superscript typesetting. The tick values and multiplier must recover the original values, without changing source data or duplicating the multiplier elsewhere on the axis. Explicit user labels and scales take precedence.
 
 ![Three synthetic categorical slices using the default one-column placement](scientific-plotting/assets/default-three-slice-preview.png)
 
@@ -49,6 +56,7 @@ Color schemes are shared configuration alongside the two workflow dimensions. Th
 | Categorical slices | A 13-color palette adapted from SailRain's two-dimensional bifurcation plots; choose distinguishable colors for the task rather than automatically taking the first N rows |
 | Time-domain waveforms | Red, blue, and black, in that priority order; keep each configured curve's color consistent across panels |
 | Independent 2D series | Reuse the ordered waveform palette for general series, without assigning time-domain meaning |
+| Bifurcation samples and Lyapunov exponent curves | Reuse the ordered waveform palette across confirmed bifurcation and exponent series, keeping each identity's color consistent across groups; the black zero reference line is separate from the series palette |
 | Phase trajectories | A darker cyan, defined separately from the categorical palette's bright cyan |
 
 Explicit user colors and confirmed task configuration take precedence. Without a specified color configuration, use SailRain. Record the selected palette rows and their mapping to the verified category display order or curve identities. The source category labels in the scheme are provenance only and must not be used to infer category meanings or numeric codes. If more distinct colors are needed than the relevant palette provides, confirm additional colors or another scheme; do not silently cycle, interpolate, or invent colors.
@@ -61,13 +69,13 @@ selected_palette_rows = [1, 2, 12]; % Explicit selection used by the synthetic d
 categories.colors = scheme.categorical_colors(selected_palette_rows, :);
 ```
 
-Supply the matching verified `categories.codes` and `categories.labels` before calling the renderer. The loader also returns `waveform_colors` and `phase_trajectory_color` for task-specific line-plot scripts. The renderer continues to accept explicit RGB arrays and does not load a scheme itself. Fonts, line widths, axes, colorbar placement, and export settings retain their existing rules. See the [color-scheme reference](scientific-plotting/references/color-schemes.md) for the interface, selection rules, and instructions for adding a scheme.
+Supply the matching verified `categories.codes` and `categories.labels` before calling the renderer. The loader also returns `waveform_colors` and `phase_trajectory_color` for task-specific PDF plot scripts. The renderer continues to accept explicit RGB arrays and does not load a scheme itself. Fonts, line widths, axes, colorbar placement, and export settings retain their existing rules. See the [color-scheme reference](scientific-plotting/references/color-schemes.md) for the interface, selection rules, and instructions for adding a scheme.
 
 ## Requirements
 
 - **MATLAB R2020a or later** is the compatibility target. This is a target, not a claim that every release has been tested; see the release-specific verification status below.
 - **Times New Roman** installed for figure text. The default main text size is 8 pt, and the slice renderer reports an error if the requested font is unavailable.
-- **Poppler tools**, including `pdfinfo` and `pdftoppm`, for page-size checks and PDF-derived previews in the independent-plot, time-series, and phase/waveform workflows. The slice demo does not require them.
+- **Poppler tools**, including `pdfinfo` and `pdftoppm`, for page-size checks and PDF-derived previews in the independent-plot, time-series, phase/waveform, and bifurcation/Lyapunov workflows. The slice demo does not require them.
 - **An agent that supports local skills**, such as Codex, when using the guided workflow. The MATLAB slice scripts can also be called directly.
 
 The skill instructions, detailed workflow references, MATLAB code comments, and usage examples use American English.
@@ -82,9 +90,11 @@ The skill instructions, detailed workflow references, MATLAB code comments, and 
 
 Independent-plot layout verification on 2026-10-19 used a temporary task script in MATLAB R2025a, version 25.1.0.2943329, with both `print -dpdf -painters` and sized vector `exportgraphics`. Three synthetic cases per backend covered a single plot, long labels with negative ticks and subscripts, and two independent plots side by side. All six final PDFs preserved vector content and embedded Times New Roman with 8 pt main text; measured frames were within 0.1 mm of 60 × 45 mm after correcting export rounding, and the PDF-derived 600 dpi previews were checked for clipping and overlap. Deliberately insufficient available widths were reported while retaining frame and font targets. These checks do not certify older MATLAB releases.
 
+Bifurcation/Lyapunov comparison verification on 2026-10-20 used a temporary task script in MATLAB R2025a, version 25.1.0.2943329, with `print -dpdf -painters -r600` and sized vector `exportgraphics`. Seven synthetic coordinate cases per backend covered single and side-by-side groups, one and multiple exponents, positive/negative/crossing data, distinct parameter grids, nonshared axes with long labels, and a thousands-scale label. All 14 final PDFs retained vector content and embedded Times New Roman with 8 pt main text; 36 measured frames had a maximum dimension error of approximately 0.028 mm after correcting export rounding. The compact zero references measured approximately 0.8 mm dashes and 0.5 mm gaps. Checks also covered LLE/LEs labels and display-factor consistency without changing source samples, zero-range and width conflicts, and nonfinite-value reporting. All accepted PDFs produced same-source 600 dpi PNGs, inspected for clipping and overlap. These were synthetic layout checks without model simulation or exponent computation; older MATLAB releases were not run.
+
 The renderer uses `ax.CLim` rather than the newer `clim` function name. It selects an export path that preserves the full physical canvas, including margins. The sizing and padding options used by [`exportgraphics`](https://www.mathworks.com/help/matlab/ref/exportgraphics.html) require R2025a or later; older releases use [`print`](https://www.mathworks.com/help/matlab/ref/print.html) instead. Explicit `export_backend = 'exportgraphics'` therefore requires R2025a or later. `export_backend = 'print'` is available for compatibility checks and manual selection on newer releases too.
 
-Running the `print` backend on R2025a checks that export path on R2025a; it does not constitute an execution test on R2020a–R2024b. The line-plot workflows also permit full-canvas vector PDF export through `print` when the installed release cannot preserve the required canvas with `exportgraphics`. Final PDF page dimensions and internal plot-box dimensions still require separate measurement and, where necessary, correction for MATLAB coordinate rounding; choosing a backend alone does not establish dimensional acceptance.
+Running the `print` backend on R2025a checks that export path on R2025a; it does not constitute an execution test on R2020a–R2024b. The task-specific PDF workflows, including bifurcation/Lyapunov comparisons, also permit full-canvas vector PDF export through `print` when the installed release cannot preserve the required canvas with `exportgraphics`. Final PDF page dimensions and internal plot-box dimensions still require separate measurement and, where necessary, correction for MATLAB coordinate rounding; choosing a backend alone does not establish dimensional acceptance.
 
 ### Environment Checks
 
@@ -95,7 +105,7 @@ assert(any(strcmpi(listfonts, 'Times New Roman')), ...
     'Install Times New Roman before rendering these figures.');
 ```
 
-If the font is missing, install it through your operating system's font manager or explicitly agree on a different font for the task. Do not silently substitute one. For the line-plot PDF checks, install Poppler through your platform's package manager and make its executables available on `PATH`. Verify them from your terminal:
+If the font is missing, install it through your operating system's font manager or explicitly agree on a different font for the task. Do not silently substitute one. For the PDF workflow checks, install Poppler through your platform's package manager and make its executables available on `PATH`. Verify them from your terminal:
 
 ```text
 pdfinfo -v
@@ -161,6 +171,45 @@ Write the reproducible MATLAB script, single-page vector PDF, and PNG
 rendered from that same PDF at 600 dpi or higher to results/bifurcation_scatter/.
 ```
 
+**One bifurcation/Lyapunov comparison group**
+
+```text
+Use $scientific-plotting to create a one-dimensional bifurcation and
+Lyapunov exponent comparison occupying one column of a two-column article.
+Plot the existing paired parameter and retained_sample columns in
+data/bif.csv in the upper frame. In the lower frame, use parameter as
+the horizontal coordinate and LE1 and LE2 from data/le.csv as all confirmed
+exponent series, in that order. Obtain variable meanings, exponent identities,
+units, and parameter scales from data/metadata.txt before plotting.
+Keep the default 60 × 30 mm upper and 60 × 15 mm lower internal frames
+and the default marker and line styles. Retain all original samples.
+Share the horizontal axis if both sources describe the same parameter,
+units, transformation, and scale; their sampling grids may differ.
+Use the shared color rules, show the zero reference line, and keep grids off.
+Write the reproducible MATLAB script, single-page vector PDF, and PNG
+rendered from that same PDF at 600 dpi or higher to results/bifurcation_lyapunov/.
+```
+
+**Two bifurcation/Lyapunov comparison groups side by side**
+
+```text
+Use $scientific-plotting to place two one-dimensional bifurcation and
+Lyapunov exponent comparison groups side by side, spanning both columns
+of a two-column article. The first group uses data/first_bif.csv and
+data/first_le.csv; the second uses data/second_bif.csv and data/second_le.csv.
+Use the verified parameter, retained-sample, and exponent mappings, units,
+series identities, and group-specific ranges in data/metadata.txt.
+Plot all confirmed exponent series and preserve all original samples.
+Within each group, share the horizontal axis only when its two sources
+meet the comparison workflow's conditions. Keep ranges independent between
+groups and retain each identity's color across both groups.
+Align the corresponding 60 × 30 mm upper and 60 × 15 mm lower frames.
+Calculate gaps, margins, and the canvas from actual labels and padding;
+report any conflict with the available width without resizing frames or text.
+Write the reproducible MATLAB script, single-page vector PDF, and PNG
+rendered from that same PDF at 600 dpi or higher to results/comparison_pair/.
+```
+
 **Pure time series**
 
 ```text
@@ -194,9 +243,9 @@ Write the adapter script, editable FIG, and 600 dpi PNG to results/slices/.
 
 Relative data and output paths in these requests refer to the research project. Keep source data, task-specific scripts, and generated figures outside the installed skill directory.
 
-### Place Independent Figures at Native Size in LaTeX
+### Place Independent and Bifurcation/Lyapunov Figures at Native Size in LaTeX
 
-The default frame dimensions and 8 pt text refer to the PDF's native physical size. Once its measured total width fits the intended column or document width, include it without a resizing option:
+For both independent plots and bifurcation/Lyapunov comparisons, the default frame dimensions and 8 pt text refer to the PDF's native physical size. Once its measured total width fits the intended column or document width, include it without a resizing option:
 
 ```latex
 % In the preamble:
@@ -210,7 +259,7 @@ The default frame dimensions and 8 pt text refer to the PDF's native physical si
 \end{figure}
 ```
 
-Use `figure*` instead of `figure` for a figure spanning both columns. Setting `width=\columnwidth` or `width=\textwidth` changes the frame dimensions and text size unless the PDF already has exactly that width; do not use it to imply that the original dimensions are preserved. If the figure does not fit, resolve the layout constraints before placing it. The single- and two-plot examples do not impose a universal journal column width.
+Replace the example filename with the accepted comparison PDF when placing a bifurcation/Lyapunov figure. Use `figure*` instead of `figure` for a figure spanning both columns. Setting `width=\columnwidth` or `width=\textwidth` changes the frame dimensions and text size unless the PDF already has exactly that width; do not use it to imply that the original dimensions are preserved. If the figure does not fit, resolve the layout constraints before placing it. The single-plot and side-by-side examples do not impose a universal journal column width.
 
 ## Run the MATLAB Demo
 
@@ -277,7 +326,7 @@ See the [slice workflow reference](scientific-plotting/references/plot-types/mat
 - Confirm variables, units, coordinate orientation, and category meanings from the actual source. Keep unit conversions and display mappings explicit in the task-specific adapter.
 - Use existing data for plotting. Simulation, model changes, numerical solving, classification design, and dynamical interpretation fall outside the current workflows.
 - Check the selected samples or category cells, figure dimensions, fonts, labels, colors, and output files. Inspect a high-resolution rendering for clipping, overlap, and unnecessary whitespace. Explicit millimeter dimensions have a 0.1 mm tolerance.
-- Follow the selected plot type's export checks: inspect the final vector PDF and its derived preview for line plots; inspect the exported PNG and reopened editable FIG for slices.
+- Follow the selected plot type's export checks: inspect the final vector PDF and its derived preview for independent plots, time series, phase/waveform composites, and bifurcation/Lyapunov comparisons; inspect the exported PNG and reopened editable FIG for slices.
 
 ## Extending the Skill
 
@@ -287,7 +336,7 @@ Extend the two dimensions independently:
 2. **Add a placement** under `scientific-plotting/references/placements/`, defining the target context, dimensions, arrangement, and required user inputs. Presentation slides and other output contexts are possible future placements.
 3. Register the new route in `SKILL.md` and document any compatibility requirements between the new reference and existing references. Update examples and verification as needed.
 
-The current package supplies the four plot types and three article placements listed above. Additional plot families and presentation-oriented placements remain future extensions.
+The current package supplies the five plot types and three article placements listed above. Additional plot families and presentation-oriented placements remain future extensions.
 
 To add a color scheme, add its JSON definition and document it in the shared [color-scheme reference](scientific-plotting/references/color-schemes.md), with appropriate verification. Only SailRain is bundled; additional authors' schemes can be added when their colors are supplied.
 
