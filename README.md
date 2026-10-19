@@ -29,7 +29,7 @@ For independent plots, the internal box excludes tick text, axis labels, legends
 
 | Plot type | Included implementation | Final outputs |
 | --- | --- | --- |
-| [Independent 2D coordinate plots](scientific-plotting/references/plot-types/independent-2d.md) | Workflow instructions for a task-specific MATLAB script using existing paired coordinates, complete independent axes, and a single or explicitly requested side-by-side arrangement | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
+| [Independent 2D coordinate plots](scientific-plotting/references/plot-types/independent-2d.md) | Workflow instructions for a task-specific MATLAB script using existing paired coordinates, complete independent axes, and a single or explicitly requested side-by-side arrangement, including scenario guidance for high-density bifurcation scatter plots | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Pure time series](scientific-plotting/references/plot-types/pure-time-series.md) | Workflow instructions for a task-specific MATLAB script, including time windows, panel labels, and single or explicitly requested split vertical axes | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Paired phase trajectory and waveform](scientific-plotting/references/plot-types/phase-waveform.md) | Workflow instructions for a task-specific MATLAB script, with a phase trajectory on the left and a waveform on the right, independently configured time windows, and shared or independent vertical axes | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Categorical bifurcation slices](scientific-plotting/references/plot-types/mat-bifurcation-slices.md) | A reusable MATLAB renderer and a synthetic demo for existing categorical MAT planes, including bifurcation maps and basins of attraction | Editable FIG and a 600 dpi PNG by default; an optional smaller PNG preview |
@@ -141,6 +141,24 @@ columns. Keep complete axes and independent ranges on both plots.
 Use the default internal frame for each plot and calculate the canvas
 from the actual labels. Write the MATLAB script, vector PDF, and
 PDF-derived preview to results/independent_pair/.
+```
+
+**High-density bifurcation scatter**
+
+```text
+Use $scientific-plotting to create a high-density bifurcation scatter plot
+from the existing paired parameter and retained_sample columns in
+data/bifurcation_samples.csv, occupying one column of a two-column article.
+Use the variable definitions and units in data/metadata.txt and keep the
+default internal frame. Apply the scenario's starting combination:
+LineStyle = 'none', Marker = 'o', MarkerSize = 0.20 pt,
+MarkerFaceColor = seriesColor, and MarkerEdgeColor = 'none'.
+Choose seriesColor using the existing shared color rules. Retain every
+original sample and its parameter pairing. Inspect the actual frame and
+local density in the exported figure; adjust the starting marker size
+when needed rather than determining it from the total point count.
+Write the reproducible MATLAB script, single-page vector PDF, and PNG
+rendered from that same PDF at 600 dpi or higher to results/bifurcation_scatter/.
 ```
 
 **Pure time series**

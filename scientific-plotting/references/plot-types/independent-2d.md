@@ -1,6 +1,6 @@
 # Independent 2D Coordinate Plot Workflow
 
-Read this file when the user requests a general independent two-dimensional coordinate plot rather than a particular scientific plot family. A plot may contain one or more series drawn with lines, markers, or both. Also apply the [main workflow](../../SKILL.md) and the selected placement file; physical plot-box dimensions and single or side-by-side arrangements belong to that placement.
+Read this file when the user requests an independent two-dimensional coordinate plot or one of its documented rendering scenarios, including high-density bifurcation scatter plots. This workflow provides a general framework with scenario-specific guidance; a plot may contain one or more series drawn with lines, markers, or both. Also apply the [main workflow](../../SKILL.md) and the selected placement file; physical plot-box dimensions and single or side-by-side arrangements belong to that placement.
 
 ## 1. Existing Data and Display Configuration
 
@@ -18,6 +18,25 @@ Read this file when the user requests a general independent two-dimensional coor
 - Configure line widths, markers, and series identities explicitly. For otherwise unspecified series colors, follow the [shared color rules](../color-schemes.md) and reuse the scheme's ordered `waveform_colors` as the general series palette; the field name does not assign time-domain meaning to these data. Preserve each identity's color across plots and resolve additional distinct colors through the shared rules.
 - Add titles, legends, formulas, arrows, and other annotations only when requested or supplied in the confirmed task configuration. Reference images establish geometry only unless the user also requests their styling or content. Do not copy example equations, stability markers, colors, or legend text into unrelated plots.
 - A standalone plot does not require a panel label. When labels are requested, preserve their confirmed text and plot mapping, place them in actual empty space, and avoid obscuring data or expanding axis ranges to accommodate them.
+
+### High-Density Bifurcation Scatter Plots
+
+Use this scenario for existing paired parameter values and retained state samples displayed as a dense point cloud. These are coordinate samples, not the discrete category cells or sheared planes handled by the MAT classification-slice workflow. The following is a starting combination for this scenario only; it does not set marker defaults for other independent curves or scatter plots. Explicit user styles take precedence.
+
+```matlab
+plot(ax, xValues, yValues, ...
+    'LineStyle', 'none', ...
+    'Marker', 'o', ...
+    'MarkerSize', 0.20, ...
+    'MarkerFaceColor', seriesColor, ...
+    'MarkerEdgeColor', 'none');
+```
+
+- `xValues` and `yValues` are the complete, verified paired coordinate vectors from the existing data. Resolve `seriesColor` through the existing shared color rules; do not introduce a fixed color for bifurcation scatter plots.
+- Start with `MarkerSize = 0.20` pt, filled circles, no marker edges, and no connecting lines. Adjust the marker size using the actual internal plot box, local overlap density, and visibility in the final native-size PDF and its high-resolution rendering. Do not determine marker size mechanically from total point count or introduce point-count thresholds. Record the final size and the visual reason for any adjustment.
+- Preserve every supplied sample, including repeated coordinates, and its parameter-to-state pairing. Do not downsample, deduplicate, or use a restricted `MarkerIndices` selection to hide samples. Do not connect the points or generate new simulation data to replace the supplied samples.
+- The user reported an approved logistic map bifurcation example using this combination in a `60 mm × 45 mm` internal plot box with `6000` parameter values and `400` retained samples per parameter. This is user-provided experience, not a repository-reproduced test or a test run during this documentation update. Its point count, matrix shape, and frame dimensions are not prerequisites for this scenario; continue to obtain geometry from the selected placement and any user overrides.
+- The example uses `plot`, whose [MarkerSize is measured in points](https://www.mathworks.com/help/matlab/ref/plot.html). Do not pass `0.20` directly as the size argument or `SizeData` of [scatter, which specifies marker area in points squared](https://www.mathworks.com/help/matlab/ref/scatter.html); it is a different size parameter.
 
 ## 3. Text-Aware Layout
 
@@ -45,6 +64,7 @@ Read this file when the user requests a general independent two-dimensional coor
 ## 5. Acceptance Checks
 
 - Check source-to-series mappings, paired sample counts and ordering, gaps, ranges, units, colors, and any requested annotations against the confirmed configuration.
+- For the high-density bifurcation scatter scenario, check the no-line, filled-circle, no-edge combination and the actual marker size, or record explicit user overrides. Verify that every supplied sample and its parameter pairing are retained, including repeated coordinates. Inspect both the complete figure and locally dense regions in the final PDF and its high-resolution rendering; record the final point size and any adjustment based on frame size, overlap, and visibility rather than total point count alone. Continue to verify vector content and use the same accepted PDF for the high-resolution preview.
 - Check the single or side-by-side arrangement and each plot's internal frame dimensions against the selected placement. For a pair, confirm equal frame sizes, aligned top and bottom edges, left-to-right order, complete axis text on each plot, and independently configured ranges.
 - Check the actual PDF fonts, main text size, subscript appearance, page size, and vector content. Inspect the PDF-derived high-resolution preview for clipping, text collisions, annotation overlap, and unnecessary whitespace. Verify any known document-width limit without altering the accepted frame or font size.
 - Report the MATLAB release, export backend, native canvas dimensions, frame measurements, any user overrides, and checks actually performed. Keep synthetic verification inputs and outputs outside the installed skill and label them as synthetic layout examples, not scientific evidence.

@@ -12,7 +12,7 @@ The user's current instructions and settings confirmed in the current conversati
 For each task, determine the plot type first, then the final placement, and read exactly one corresponding file for each:
 
 1. **Plot type**
-   - General independent 2D coordinate plots, without a required scientific plot family: read the [independent 2D workflow](references/plot-types/independent-2d.md). Select this route when the user requests the independent coordinate-plot format, not merely because a figure has one panel. Preserve an explicitly requested time-series, phase/waveform, or categorical-slice workflow and its presets.
+   - Independent 2D coordinate plots, including high-density parameter-versus-state bifurcation scatter plots: read the [independent 2D workflow](references/plot-types/independent-2d.md) and apply any relevant scenario guidance within it. Select this route when the user requests the independent coordinate-plot format or a documented scenario, not merely because a figure has one panel. Discrete MAT category planes rendered as sheared slices still use the categorical-slice route below. Preserve an explicitly requested time-series, phase/waveform, or categorical-slice workflow and its presets.
    - Pure time series: read the [pure time-series workflow](references/plot-types/pure-time-series.md).
    - Paired plots with a phase trajectory on the left and a waveform on the right: read the [phase-trajectory-and-waveform workflow](references/plot-types/phase-waveform.md).
    - Sheared slices of MAT categorical planes: read the [MAT bifurcation and categorical-plane slice workflow](references/plot-types/mat-bifurcation-slices.md).
