@@ -29,7 +29,7 @@ The slice demo explicitly selects rows `[1, 2, 12]` to retain its gray, bright c
 
 The waveform palette has three rows in red, blue, then black priority. Assign the first required curve identity red, the next distinct identity blue, and the next black, using the task's confirmed curve order. Configure identities explicitly and retain their colors across panels, including panels where only some identities appear. Do not restart the palette for each panel or bind a color to a fixed physical variable name.
 
-This rule applies to both pure time series and the waveform side of phase/waveform composites. An explicit single-color request still applies to all curves as described above.
+This rule applies to both pure time series and the waveform side of phase/waveform composites. Independent 2D coordinate plots also reuse `waveform_colors` as their default ordered series palette, without implying that their coordinates represent time-domain waveforms. An explicit single-color request still applies to all curves as described above.
 
 ### Phase Trajectories
 

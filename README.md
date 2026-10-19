@@ -8,7 +8,7 @@ The skill is organized along two independent dimensions: **plot type** and **pla
 
 | Dimension | Responsibility | Current options |
 | --- | --- | --- |
-| Plot type | Input interpretation, plotting behavior, data checks, and export requirements | Pure time series; paired phase trajectory and waveform; categorical bifurcation slices |
+| Plot type | Input interpretation, plotting behavior, data checks, and export requirements | Independent 2D coordinate plots; pure time series; paired phase trajectory and waveform; categorical bifurcation slices |
 | Placement | Target document context, physical dimensions, panel arrangement, margins, and spacing | Full width in a one-column document; one column in a two-column document; spanning both columns in a two-column document |
 
 For each task, select one plot type and one placement. The agent reads the corresponding reference from each dimension and applies both together with the common rules in [SKILL.md](scientific-plotting/SKILL.md). For example, the same time-series workflow can produce a full-width figure for a one-column article or a vertically stacked figure occupying one column of a two-column article.
@@ -17,21 +17,24 @@ The default placement is full width in a one-column document. Explicit user dime
 
 | Placement | Available presets |
 | --- | --- |
-| [One-column document, full width](scientific-plotting/references/placements/one-column-document-full-width.md) | Four time-series panels on a 148 × 49 mm canvas; four phase/waveform pairs with shared vertical axes within each pair on a 148 × 55 mm canvas; three slices on a 135 × 55.5 mm canvas, with additional rows and height calculated for larger slice layouts. |
-| [Two-column document, one column](scientific-plotting/references/placements/two-column-document-single-column.md) | Time-series panels stacked vertically, each with a 60 × 12 mm internal plot box. The canvas includes additional space calculated from the actual labels. Other plot types require explicit layout dimensions. |
-| [Two-column document, spanning both columns](scientific-plotting/references/placements/two-column-document-spanning.md) | Explicit layout dimensions are required for every plot type. |
+| [One-column document, full width](scientific-plotting/references/placements/one-column-document-full-width.md) | Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested, with a text-derived canvas. Four time-series panels on a 148 × 49 mm canvas; four phase/waveform pairs with shared vertical axes within each pair on a 148 × 55 mm canvas; three slices on a 135 × 55.5 mm canvas, with additional rows and height calculated for larger slice layouts. |
+| [Two-column document, one column](scientific-plotting/references/placements/two-column-document-single-column.md) | One independent plot with a 60 × 45 mm internal box and a text-derived canvas. Time-series panels stacked vertically, each with a 60 × 12 mm internal plot box and additional space calculated from the actual labels. Other plot types require explicit layout dimensions. |
+| [Two-column document, spanning both columns](scientific-plotting/references/placements/two-column-document-spanning.md) | Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested, with a text-derived canvas. Other plot types require explicit layout dimensions. |
 
 These presets are this skill's bundled defaults. Confirm any additional journal requirements and resolve missing dimensions before plotting. Slice layouts in either two-column placement require complete geometry, including the canvas, slices, spacing, margins, and colorbar.
+
+For independent plots, the internal box excludes tick text, axis labels, legends, and surrounding annotations. Its 60 × 45 mm dimensions and the default 8 pt Times New Roman text are preserved while margins and any interplot gap are calculated from the actual text. The complete canvas is not fixed at an illustrative overall width such as 70 mm or at another plot type's preset width. Check it against any known available document width; report a conflict rather than shrinking the box or text. A single independent plot may remain compact even when the placement allows the full document width.
 
 ## Current Plotting Workflows
 
 | Plot type | Included implementation | Final outputs |
 | --- | --- | --- |
+| [Independent 2D coordinate plots](scientific-plotting/references/plot-types/independent-2d.md) | Workflow instructions for a task-specific MATLAB script using existing paired coordinates, complete independent axes, and a single or explicitly requested side-by-side arrangement | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Pure time series](scientific-plotting/references/plot-types/pure-time-series.md) | Workflow instructions for a task-specific MATLAB script, including time windows, panel labels, and single or explicitly requested split vertical axes | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Paired phase trajectory and waveform](scientific-plotting/references/plot-types/phase-waveform.md) | Workflow instructions for a task-specific MATLAB script, with a phase trajectory on the left and a waveform on the right, independently configured time windows, and shared or independent vertical axes | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Categorical bifurcation slices](scientific-plotting/references/plot-types/mat-bifurcation-slices.md) | A reusable MATLAB renderer and a synthetic demo for existing categorical MAT planes, including bifurcation maps and basins of attraction | Editable FIG and a 600 dpi PNG by default; an optional smaller PNG preview |
 
-The time-series and phase/waveform workflows guide the agent in writing a reproducible script for the supplied data. The bundled slice renderer supports FIG and PNG export.
+The independent-plot, time-series, and phase/waveform workflows guide the agent in writing a reproducible script for the supplied data. A one-panel count alone does not select the independent-plot route or change an existing specialized workflow's presets. The bundled slice renderer supports FIG and PNG export.
 
 ![Three synthetic categorical slices using the default one-column placement](scientific-plotting/assets/default-three-slice-preview.png)
 
@@ -45,6 +48,7 @@ Color schemes are shared configuration alongside the two workflow dimensions. Th
 | --- | --- |
 | Categorical slices | A 13-color palette adapted from SailRain's two-dimensional bifurcation plots; choose distinguishable colors for the task rather than automatically taking the first N rows |
 | Time-domain waveforms | Red, blue, and black, in that priority order; keep each configured curve's color consistent across panels |
+| Independent 2D series | Reuse the ordered waveform palette for general series, without assigning time-domain meaning |
 | Phase trajectories | A darker cyan, defined separately from the categorical palette's bright cyan |
 
 Explicit user colors and confirmed task configuration take precedence. Without a specified color configuration, use SailRain. Record the selected palette rows and their mapping to the verified category display order or curve identities. The source category labels in the scheme are provenance only and must not be used to infer category meanings or numeric codes. If more distinct colors are needed than the relevant palette provides, confirm additional colors or another scheme; do not silently cycle, interpolate, or invent colors.
@@ -63,7 +67,7 @@ Supply the matching verified `categories.codes` and `categories.labels` before c
 
 - **MATLAB R2020a or later** is the compatibility target. This is a target, not a claim that every release has been tested; see the release-specific verification status below.
 - **Times New Roman** installed for figure text. The default main text size is 8 pt, and the slice renderer reports an error if the requested font is unavailable.
-- **Poppler tools**, including `pdfinfo` and `pdftoppm`, for page-size checks and PDF-derived previews in the time-series and phase/waveform workflows. The slice demo does not require them.
+- **Poppler tools**, including `pdfinfo` and `pdftoppm`, for page-size checks and PDF-derived previews in the independent-plot, time-series, and phase/waveform workflows. The slice demo does not require them.
 - **An agent that supports local skills**, such as Codex, when using the guided workflow. The MATLAB slice scripts can also be called directly.
 
 The skill instructions, detailed workflow references, MATLAB code comments, and usage examples use American English.
@@ -75,6 +79,8 @@ The skill instructions, detailed workflow references, MATLAB code comments, and 
 | R2020a–R2024b | Full-canvas `print`, using explicit paper dimensions and DPI | Compatibility target; not run in these releases |
 | R2025a, version 25.1.0.2943329, macOS | Sized `exportgraphics`; the `print` backend can also be selected explicitly | 14 regression checks passed on 2026-10-19: 7 slice checks and 7 color-scheme checks, covering both PNG backends |
 | Other newer releases | Sized `exportgraphics` | Compatibility target; not run in these releases |
+
+Independent-plot layout verification on 2026-10-19 used a temporary task script in MATLAB R2025a, version 25.1.0.2943329, with both `print -dpdf -painters` and sized vector `exportgraphics`. Three synthetic cases per backend covered a single plot, long labels with negative ticks and subscripts, and two independent plots side by side. All six final PDFs preserved vector content and embedded Times New Roman with 8 pt main text; measured frames were within 0.1 mm of 60 × 45 mm after correcting export rounding, and the PDF-derived 600 dpi previews were checked for clipping and overlap. Deliberately insufficient available widths were reported while retaining frame and font targets. These checks do not certify older MATLAB releases.
 
 The renderer uses `ax.CLim` rather than the newer `clim` function name. It selects an export path that preserves the full physical canvas, including margins. The sizing and padding options used by [`exportgraphics`](https://www.mathworks.com/help/matlab/ref/exportgraphics.html) require R2025a or later; older releases use [`print`](https://www.mathworks.com/help/matlab/ref/print.html) instead. Explicit `export_backend = 'exportgraphics'` therefore requires R2025a or later. `export_backend = 'print'` is available for compatibility checks and manual selection on newer releases too.
 
@@ -114,6 +120,29 @@ For an agent without local skill discovery, provide `scientific-plotting/SKILL.m
 
 Invoke `$scientific-plotting` and specify the plot type, placement, source files, variable mappings, units, desired ranges, and output location. Include file order, colors, category definitions, and physical dimensions when relevant. For example:
 
+**One independent plot**
+
+```text
+Use $scientific-plotting to create an independent 2D coordinate plot from
+data/coordinates.csv, occupying one column in a two-column article.
+Use input_V and response_V as paired coordinates, both in volts, and
+connect the samples in their original order. The available column width
+for this task is 88.5 mm. Keep the default internal frame and text size.
+Write the MATLAB script, vector PDF, and PDF-derived preview to results/independent/.
+```
+
+**Two independent plots side by side**
+
+```text
+Use $scientific-plotting to place independent plots from data/first.csv
+and data/second.csv side by side, in that order, spanning both columns
+of a two-column article. Each file has paired position_mm and force_N
+columns. Keep complete axes and independent ranges on both plots.
+Use the default internal frame for each plot and calculate the canvas
+from the actual labels. Write the MATLAB script, vector PDF, and
+PDF-derived preview to results/independent_pair/.
+```
+
 **Pure time series**
 
 ```text
@@ -146,6 +175,24 @@ Write the adapter script, editable FIG, and 600 dpi PNG to results/slices/.
 ```
 
 Relative data and output paths in these requests refer to the research project. Keep source data, task-specific scripts, and generated figures outside the installed skill directory.
+
+### Place Independent Figures at Native Size in LaTeX
+
+The default frame dimensions and 8 pt text refer to the PDF's native physical size. Once its measured total width fits the intended column or document width, include it without a resizing option:
+
+```latex
+% In the preamble:
+\usepackage{graphicx}
+
+% In the document:
+\begin{figure}[!t]
+\centering
+\includegraphics{figures/independent_plot.pdf}
+\caption{A task-specific description.}
+\end{figure}
+```
+
+Use `figure*` instead of `figure` for a figure spanning both columns. Setting `width=\columnwidth` or `width=\textwidth` changes the frame dimensions and text size unless the PDF already has exactly that width; do not use it to imply that the original dimensions are preserved. If the figure does not fit, resolve the layout constraints before placing it. The single- and two-plot examples do not impose a universal journal column width.
 
 ## Run the MATLAB Demo
 
@@ -222,7 +269,7 @@ Extend the two dimensions independently:
 2. **Add a placement** under `scientific-plotting/references/placements/`, defining the target context, dimensions, arrangement, and required user inputs. Presentation slides and other output contexts are possible future placements.
 3. Register the new route in `SKILL.md` and document any compatibility requirements between the new reference and existing references. Update examples and verification as needed.
 
-The current package supplies the three plot types and three article placements listed above. Additional plot families and presentation-oriented placements remain future extensions.
+The current package supplies the four plot types and three article placements listed above. Additional plot families and presentation-oriented placements remain future extensions.
 
 To add a color scheme, add its JSON definition and document it in the shared [color-scheme reference](scientific-plotting/references/color-schemes.md), with appropriate verification. Only SailRain is bundled; additional authors' schemes can be added when their colors are supplied.
 
