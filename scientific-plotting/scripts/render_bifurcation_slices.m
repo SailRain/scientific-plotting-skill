@@ -326,7 +326,7 @@ angle = -atan2d(options.slice_drop_mm, options.slice_width_mm);
 for tick = options.x_ticks(:).'
     [x, y] = coordinates(tick, f(1), origin, options);
     plot(ax, [x, x], [y, y - options.tick_length_mm], 'k-', 'LineWidth', options.line_width_pt);
-    slice_text(ax, x, y - options.x_tick_offset_mm, sprintf('%g', tick), options, ...
+    slice_text(ax, x, y - options.x_tick_offset_mm, numeric_tick_label(tick), options, ...
         'VerticalAlignment', 'top', 'Rotation', angle, 'Tag', sprintf('x_tick_%d', index));
 end
 [x, y] = coordinates(mean(a), f(1), origin, options);
@@ -340,13 +340,18 @@ if row_start
     for tick = options.y_ticks(:).'
         [x, y] = coordinates(a(1), tick, origin, options);
         plot(ax, [x - options.tick_length_mm, x], [y, y], 'k-', 'LineWidth', options.line_width_pt);
-        slice_text(ax, x - options.y_tick_offset_mm, y, sprintf('%g', tick), options, ...
+        slice_text(ax, x - options.y_tick_offset_mm, y, numeric_tick_label(tick), options, ...
             'HorizontalAlignment', 'right', 'Tag', sprintf('y_tick_%d', index));
     end
     [x, y] = coordinates(a(1), mean(f), origin, options);
     slice_text(ax, x - options.y_label_offset_mm, y, options.y_label, options, ...
         'Interpreter', options.label_interpreter, 'Rotation', 90, 'Tag', sprintf('y_label_%d', index));
 end
+end
+
+function label = numeric_tick_label(value)
+% Replace only signs in the numeric display string, including exponents.
+label = strrep(sprintf('%g', value), '-', char(8722));
 end
 
 function h = slice_text(ax, x, y, label, options, varargin)

@@ -108,6 +108,92 @@ verifyTrue(testCase, isfile([options.output_prefix, '_preview.png']));
 verifyEqual(testCase, fig.UserData.export_backend, 'print');
 end
 
+function testMathMinusNumericTicks(testCase)
+[slices, categories, options] = fixture(1);
+slices.x = -2 + 5 * slices.x;
+slices.y = -40 + 90 * (slices.y - 10) / 40;
+options.x_limits = [-2, 3];
+options.y_limits = [-40, 50];
+options.x_ticks = [-2, 0, 3];
+options.y_ticks = [-40, 0, 50];
+original_slices = slices;
+original_categories = categories;
+[fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
+cleanup = onCleanup(@() close(fig)); %#ok<NASGU>
+minus = char(8722);
+verify_tick_text(testCase, ax, 'x_tick_1', {[minus, '2'], '0', '3'});
+verify_tick_text(testCase, ax, 'y_tick_1', {[minus, '40'], '0', '50'});
+verifyEqual(testCase, fig.UserData.layout.x_ticks, options.x_ticks);
+verifyEqual(testCase, fig.UserData.layout.y_ticks, options.y_ticks);
+verifyEqual(testCase, fig.UserData.layout.x_limits, options.x_limits);
+verifyEqual(testCase, fig.UserData.layout.y_limits, options.y_limits);
+verifyEqual(testCase, slices, original_slices);
+verifyEqual(testCase, categories, original_categories);
+verify_data(testCase, fig, ax, cb, slices, categories);
+end
+
+function testPreparedMathTextAndScientificTicksBothBackends(testCase)
+minus = char(8722);
+backends = {'print', 'exportgraphics'};
+for b = 1:numel(backends)
+    if strcmp(backends{b}, 'exportgraphics') && verLessThan('matlab', '25.1')
+        continue;
+    end
+    [slices, categories, options] = fixture(1);
+    slices.x = (-1 + 2 * slices.x) * 1e-5;
+    slices.y = (-1 + 2 * (slices.y - 10) / 40) * 1e-6;
+    slices.title = ['Run-1: 10^{', minus, '3}'];
+    slices.source_file = 'synthetic_Run-1.mat';
+    slices.metadata.source_labels = {'negative-4', 'time-response', 'x-y', 'Run-1'};
+    categories.labels = {[minus, '4'], 'time-response', ['x', minus, 'y'], 'Run-1'};
+    options.x_limits = [-1e-5, 1e-5];
+    options.y_limits = [-1e-6, 1e-6];
+    options.x_ticks = [-1e-5, 0, 1e-5];
+    options.y_ticks = [-1e-6, 0, 1e-6];
+    options.x_label = ['r, s^{', minus, '1}'];
+    options.y_label = ['x', minus, 'y'];
+    options.title_interpreter = 'tex';
+    options.figure_name = 'time-response Run-1';
+    options.slice_width_mm = 60;
+    options.slice_height_mm = 45;
+    options.margins_mm = [18, 12, 34, 10];
+    options.export_backend = backends{b};
+    options.output_prefix = fullfile(testCase.TestData.output_dir, ...
+        ['math_minus_', backends{b}]);
+    original_slices = slices;
+    original_categories = categories;
+    [fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
+    cleanup = onCleanup(@() close(fig));
+    verify_tick_text(testCase, ax, 'x_tick_1', ...
+        {[minus, '1e', minus, '05'], '0', ['1e', minus, '05']});
+    verify_tick_text(testCase, ax, 'y_tick_1', ...
+        {[minus, '1e', minus, '06'], '0', ['1e', minus, '06']});
+    verify_prepared_text(testCase, fig, ax, cb, slices, categories, options);
+    verifyEqual(testCase, slices, original_slices);
+    verifyEqual(testCase, categories, original_categories);
+    verify_data(testCase, fig, ax, cb, slices, categories);
+    verify_png(testCase, [options.output_prefix, '.png'], fig.UserData.layout, 600);
+    verify_raster_cells(testCase, [options.output_prefix, '.png'], fig, slices, categories);
+    reopened = openfig([options.output_prefix, '.fig'], 'invisible');
+    reopen_cleanup = onCleanup(@() close(reopened));
+    reopened_ax = findall(reopened, 'Type', 'axes');
+    reopened_cb = findall(reopened, 'Type', 'colorbar');
+    verify_tick_text(testCase, reopened_ax, 'x_tick_1', ...
+        {[minus, '1e', minus, '05'], '0', ['1e', minus, '05']});
+    verify_prepared_text(testCase, reopened, reopened_ax, reopened_cb, ...
+        slices, categories, options);
+    verify_data(testCase, reopened, reopened_ax, reopened_cb, slices, categories);
+    label = findobj(reopened_ax, 'Tag', 'x_label_1');
+    label.String = ['r, s^{', minus, '2}'];
+    verifyEqual(testCase, label.String, ['r, s^{', minus, '2}']);
+    verifyEqual(testCase, reopened.UserData.layout.x_ticks, options.x_ticks);
+    verifyEqual(testCase, reopened.UserData.layout.y_ticks, options.y_ticks);
+    verifyEqual(testCase, reopened.UserData.layout.x_limits, options.x_limits);
+    verifyEqual(testCase, reopened.UserData.layout.y_limits, options.y_limits);
+    clear reopen_cleanup cleanup;
+end
+end
+
 function testInputErrors(testCase)
 [slices, categories, options] = fixture(1);
 bad = slices;
@@ -193,6 +279,32 @@ for k = 1:numel(slices)
     verifyEqual(testCase, surface_handle.FaceColor, 'flat');
 end
 verifyEqual(testCase, fig.Color, [1, 1, 1]);
+end
+
+function verify_tick_text(testCase, ax, tag, expected)
+labels = findobj(ax, 'Tag', tag);
+actual = string({labels.String});
+verifyEqual(testCase, sort(actual(:)), sort(string(expected(:))));
+verifyFalse(testCase, any(contains(actual, '-')));
+verifyEqual(testCase, string({labels.Interpreter}), repmat("none", 1, numel(labels)));
+end
+
+function verify_prepared_text(testCase, fig, ax, cb, slices, categories, options)
+x_label = findobj(ax, 'Tag', 'x_label_1');
+y_label = findobj(ax, 'Tag', 'y_label_1');
+title = findobj(ax, 'Tag', 'panel_label_1');
+verifyEqual(testCase, x_label.String, options.x_label);
+verifyEqual(testCase, y_label.String, options.y_label);
+verifyEqual(testCase, title.String, ['(a) ', slices.title]);
+verifyEqual(testCase, x_label.Interpreter, 'tex');
+verifyEqual(testCase, title.Interpreter, 'tex');
+verifyEqual(testCase, fig.Name, 'time-response Run-1');
+verifyEqual(testCase, string(cb.TickLabels), string(categories.labels(:)));
+verifyEqual(testCase, cb.TickLabelInterpreter, 'none');
+surface_handle = findobj(ax, 'Tag', 'bifurcation_slice_1');
+verifyEqual(testCase, surface_handle.UserData.source_labels, slices.metadata.source_labels);
+verifyEqual(testCase, surface_handle.UserData.source_file, 'synthetic_Run-1.mat');
+verifyEqual(testCase, surface_handle.UserData.category_codes, categories.codes);
 end
 
 function verify_png(testCase, filename, layout, dpi)
