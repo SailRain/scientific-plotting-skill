@@ -17,11 +17,13 @@ The default placement is full width in a one-column document. Explicit user dime
 
 | Placement | Available presets |
 | --- | --- |
-| [One-column document, full width](scientific-plotting/references/placements/one-column-document-full-width.md) | Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 60 × 30 mm upper box and 60 × 15 mm lower box per group: one group by default, or two groups side by side when requested. Both use a text-derived canvas. Four time-series panels on a 148 × 49 mm canvas; four phase/waveform pairs with shared vertical axes within each pair on a 148 × 55 mm canvas; three slices on a 135 × 55.5 mm canvas, with additional rows and height calculated for larger slice layouts. |
-| [Two-column document, one column](scientific-plotting/references/placements/two-column-document-single-column.md) | One independent plot with a 60 × 45 mm internal box. One bifurcation/Lyapunov comparison group with a 60 × 30 mm upper box and 60 × 15 mm lower box. Both use a text-derived canvas. Time-series panels stacked vertically, each with a 60 × 12 mm internal plot box and additional space calculated from the actual labels. Other plot types require explicit layout dimensions. |
-| [Two-column document, spanning both columns](scientific-plotting/references/placements/two-column-document-spanning.md) | Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 60 × 30 mm upper box and 60 × 15 mm lower box per group: one group by default, or two groups side by side when requested. Both use a text-derived canvas. Other plot types require explicit layout dimensions. |
+| [One-column document, full width](scientific-plotting/references/placements/one-column-document-full-width.md) | Pure time series: 60 × 12 mm for one panel with one waveform; otherwise every frame is 60 × 15 mm. One vertical plot column by default, or two on request. Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 60 × 30 mm upper box and 60 × 15 mm lower box per group: one group by default, or two groups side by side when requested. These workflows use a text-derived canvas. Four phase/waveform pairs with shared vertical axes within each pair on a 148 × 55 mm canvas; three slices on a 135 × 55.5 mm canvas, with additional rows and height calculated for larger slice layouts. |
+| [Two-column document, one column](scientific-plotting/references/placements/two-column-document-single-column.md) | Pure time series: 60 × 12 mm for one panel with one waveform; otherwise every frame is 60 × 15 mm. One vertical plot column, without a two-plot-column preset. One independent plot with a 60 × 45 mm internal box. One bifurcation/Lyapunov comparison group with a 60 × 30 mm upper box and 60 × 15 mm lower box. These workflows use a text-derived canvas. Other plot types require explicit layout dimensions. |
+| [Two-column document, spanning both columns](scientific-plotting/references/placements/two-column-document-spanning.md) | Pure time series: 60 × 12 mm for one panel with one waveform; otherwise every frame is 60 × 15 mm. One vertical plot column by default, or two on request. Independent plots with a 60 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 60 × 30 mm upper box and 60 × 15 mm lower box per group: one group by default, or two groups side by side when requested. These workflows use a text-derived canvas. Other plot types require explicit layout dimensions. |
 
 These presets are this skill's bundled defaults. Confirm any additional journal requirements and resolve missing dimensions before plotting. Slice layouts in either two-column placement require complete geometry, including the canvas, slices, spacing, margins, and colorbar.
+
+For pure time series, dimensions refer only to the internal coordinate frame measured at the box-line centerlines, excluding tick numbers, axis labels, legends, and external annotations. Select the default height from the entire figure: exactly one panel and one waveform uses 12 mm; multiple data waveforms or multiple panels make every frame 15 mm high. Reference lines, legend samples, and annotations do not count as waveforms. Explicit dimensions override only the specified fields, so a height-only override retains the default 60 mm width. All three placements default to a vertical stack; one-column and spanning placements permit two plot columns on request. Fill the left column top to bottom with `ceil(N/2)` panels before filling the right, unless the user specifies another order. Align corresponding rows and omit empty frames. When horizontal axes can be shared, show complete horizontal text on the last actual panel in each column. Calculate margins, gaps, and the complete canvas from actual text and configured safety padding; check any known available width without shrinking frames or text, stretching frames to fill the article, or automatically switching placement. The phase/waveform workflow retains its separate fixed-canvas presets.
 
 For independent plots, the internal box excludes tick text, axis labels, legends, and surrounding annotations. Its 60 × 45 mm dimensions and the default 8 pt Times New Roman text are preserved while margins and any interplot gap are calculated from the actual text. The complete canvas is not fixed at an illustrative overall width such as 70 mm or at another plot type's preset width. Check it against any known available document width; report a conflict rather than shrinking the box or text. A single independent plot may remain compact even when the placement allows the full document width.
 
@@ -104,6 +106,8 @@ Bifurcation/Lyapunov comparison verification on 2026-10-20 used a temporary task
 Mathematical-minus verification on 2026-10-20 used the same MATLAB release and both vector PDF backends. Temporary synthetic fixtures covered all five plot types, with an additional logarithmic-axis and numeric-colorbar case. The four PDF workflows plus that extra case produced 10 single-page vector PDFs with embedded Times New Roman, 8 pt main text, actual U+2212 characters, and same-source 600 dpi previews. Sixteen measured frames had a maximum dimension error of approximately 0.099 mm after correcting export rounding. Native 600 dpi slice PNGs and reopened editable FIGs passed with both PNG backends. Checks covered right-side axes, unit and scientific exponents, formulas, legends, annotations, hidden labels, preserved English hyphens, and unchanged numeric data, limits, ticks, and category mappings. The phase/waveform fixture used an explicitly configured temporary single-pair canvas; placement presets were unchanged. These fixtures involved no scientific simulation, and older releases were not run.
 
 Subscript verification on 2026-10-20 also used this release, `print -dpdf -painters`, and sized vector `exportgraphics`. Independent final-PDF comparisons covered 14 unmodified native expressions per backend, including Greek and multi-character subscripts, simultaneous scripts, negative exponents, rotations of 0, 90, −15, and 30 degrees, and 8 and 10 pt main text. Maximum subscript displacement error from 1 pt was below 0.0001 pt; main text, units, and superscripts also stayed within 0.0001 pt, with matching fonts and sizes. The four PDF workflows, native-reference comparisons, and editable legend fixture produced 12 single-page vector PDFs with embedded Times New Roman and same-source 600 dpi PNGs. Fourteen measured plot boxes had a maximum dimension error of approximately 0.078 mm. Synthetic fixtures also checked explicit italic variables and variable subscripts, upright units and descriptive or numeric scripts, shared/hidden labels, dual vertical axes, slice labels and colorbar centers, preserved sample/category mappings, and both native 600 dpi slice PNG backends with reopened editable FIGs. SVG text calibration and strict original-outline registration were both exercised. An additional print-only probe of fractional axes geometry and a manual aspect ratio remained within 0.022 pt of the expected positions. No scientific simulation or older-release execution was performed.
+
+Pure-time-series layout verification on 2026-10-21 used MATLAB R2025a, version 25.1.0.2943329, with `print -dpdf -painters -r600` and sized vector `exportgraphics`. Twelve synthetic coordinate fixtures covered single-waveform figures in all three placements, multiple curves, multiple panels, default vertical stacks, requested two-column layouts with odd panel counts, separate width and height overrides, long labels, explicit split y-axes, different time windows, and hidden horizontal text. A requested reference line did not change the single-waveform height classification. Source arrays, curve order, and time-window sample mappings were preserved; multiple curves retained a single y-axis unless split axes were explicitly configured. Nonspanning two-column and insufficient-width requests reported conflicts while preserving the frame and font targets. All 24 accepted PDFs retained vector content and embedded Times New Roman with 8 pt main text, semantic italics, and actual U+2212 characters. After correcting export rounding, 52 measured frames had a maximum dimension error of approximately 0.066 mm; subscript corrections and unchanged glyph positions matched independent native controls within 0.0001 pt. Same-PDF 600 dpi PNGs were checked for alignment, clipping, and overlap. These were layout checks without scientific simulation; older releases were not run.
 
 The renderer uses `ax.CLim` rather than the newer `clim` function name. It selects an export path that preserves the full physical canvas, including margins. The sizing and padding options used by [`exportgraphics`](https://www.mathworks.com/help/matlab/ref/exportgraphics.html) require R2025a or later; older releases use [`print`](https://www.mathworks.com/help/matlab/ref/print.html) instead. Explicit `export_backend = 'exportgraphics'` therefore requires R2025a or later. `export_backend = 'print'` is available for compatibility checks and manual selection on newer releases too.
 
@@ -229,8 +233,41 @@ rendered from that same PDF at 600 dpi or higher to results/comparison_pair/.
 Use $scientific-plotting to plot data/voltage.csv as a pure time series
 occupying one column of a two-column article. Use time_s for time in seconds
 and voltage_V for voltage in volts. Show 0.2 to 0.4 s with a blue curve.
+This single-panel, single-waveform figure uses a 60 × 12 mm internal frame;
+calculate the complete canvas separately from the actual text and padding.
 Write the MATLAB script, vector PDF, and PDF-derived preview to results/voltage/.
 ```
+
+**Multiple waveforms or panels**
+
+```text
+Use $scientific-plotting to plot data/run_1.csv through data/run_4.csv,
+in that order, as four pure time-series panels in a one-column article.
+Use time_s and voltage_V, both with the units indicated by their headers.
+Show 0.2 to 0.4 s in every panel. Use the default single vertical column,
+with a 60 × 15 mm internal frame for every panel and shared-bottom x-axis
+text where the ranges and ticks match. Calculate the canvas from the text.
+Write the reproducible script, vector PDF, and same-PDF 600 dpi PNG
+to results/time_series_stack/.
+```
+
+Two or more waveforms in a single panel also use a 60 × 15 mm frame. Keep the default single y-axis unless the user explicitly requests `split-y` and confirms each curve's axis mapping.
+
+**Two plot columns and user-specified dimensions**
+
+```text
+Use $scientific-plotting to plot data/run_1.csv through data/run_5.csv
+as five pure time-series panels in a one-column article. Use the verified
+time and signal mappings in data/metadata.txt. Arrange two plot columns:
+panels 1, 2, and 3 down the left, then 4 and 5 down the right. Keep every
+internal frame at the default 60 × 15 mm and align corresponding rows.
+When the time ranges and ticks match, use shared-bottom text on panels 3
+and 5. Do not create an empty sixth frame. Check the full canvas against
+the available width of 150 mm and report any conflict without resizing.
+Write the script, vector PDF, and same-PDF 600 dpi PNG to results/time_pair/.
+```
+
+For the same two-column arrangement spanning both columns of a two-column article, replace the placement in that request with the spanning placement. The nonspanning two-column placement has no two-plot-column preset and reports a conflict if that arrangement is requested. To override a dimension, add an explicit instruction such as `Use an internal frame height of 18 mm, keeping the default width.` This changes only the height; the width remains 60 mm. Specifying both dimensions overrides both default fields.
 
 **Paired phase trajectory and waveform**
 

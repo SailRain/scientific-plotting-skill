@@ -2,24 +2,16 @@
 
 This file applies to full-width figures in a one-column document and is the default choice when the user does not specify a placement. These values are this skill's bundled defaults, not universal standards for all one-column journals; dimensions explicitly provided by the user in the current turn override the corresponding preset fields.
 
-## 1. Four Groups of Pure Time-Series Plots
+## 1. Pure Time-Series Plots
 
-Applies to four groups of pure time-series plots arranged in two columns and two rows.
+Applies to the [pure time-series workflow](../plot-types/pure-time-series.md).
 
-- Unless the user specifies a different order, groups 1, 2, 3, and 4 occupy the upper-left, lower-left, upper-right, and lower-right positions, respectively.
-
-- Canvas: `148 mm × 49 mm`
-- Each internal plot box: `55 mm × 15 mm`
-- Plot-box positions `[left, bottom, width, height]` (mm):
-
-  ```text
-  Left top:     [12, 27, 55, 15]
-  Left bottom:  [12,  8, 55, 15]
-  Right top:    [83, 27, 55, 15]
-  Right bottom: [83,  8, 55, 15]
-  ```
-
-- If rounding of page coordinates in points produces an internal plot box of approximately `55.033 mm × 14.993 mm` in the final PDF, it passes under the main workflow's `0.1 mm` physical-dimension tolerance.
+- Every internal plot box defaults to `60 mm` wide. If the entire figure contains exactly one panel and exactly one data waveform, its default height is `12 mm`; otherwise, multiple data waveforms or multiple panels make every box's default height `15 mm`. A user-specified width or height overrides only that corresponding field. These dimensions exclude tick labels, axis labels, legends, panel labels, and external annotations. Use `PositionConstraint = 'innerposition'` and measure between frame-line centers in the final PDF; each dimension must be within `0.1 mm` of its configured value.
+- Default to one vertical plot column, preserving the specified panel order from top to bottom. Use two plot columns only when requested. For `N` panels in two columns, put the first `ceil(N / 2)` panels from top to bottom in the left column and the remaining panels from top to bottom in the right column. Align the frames in corresponding rows; an odd panel count must not create an empty axes object for the unoccupied cell. Do not automatically reorder panels.
+- Apply the plot-type file's `each-panel`, `shared-bottom`, or `hidden` horizontal-axis text mode. A single panel defaults to `each-panel`; multiple panels with identical time ranges and ticks default to `shared-bottom`. In two plot columns, `shared-bottom` shows complete horizontal-axis text on the last occupied panel of each column. Do not share horizontal-axis text when the required time ranges or ticks differ. The vertical-axis mode defaults to `single-y`; use `split-y` only when explicitly requested with a confirmed curve-to-axis mapping.
+- Measure all visible text in its final font, including left and right tick labels, axis labels, panel labels, and any requested legends or external annotations. Derive the four margins, vertical gaps, any horizontal gap, and complete canvas from these extents plus explicitly configured padding. Reserve complete horizontal-axis text wherever required by the selected mode, and use common row geometry to preserve frame alignment in two plot columns. Record the resulting dimensions in the task script and set an explicit PDF page size; this preset has no fixed canvas or hard-coded coordinates.
+- Retain the configured internal frames and the common `Times New Roman`, `8 pt` main-text default when more surrounding space is needed. `split-y` adds the necessary space for right-axis text without changing the frame dimensions. Check the complete canvas against any known available article width; if the content and required padding exceed it, report the required and available widths and resolve the conflict with the user. Do not stretch or shrink frames, reduce the font, clip text, or silently scale the figure to fit. If no width is known, report the native canvas dimensions.
+- All physical dimensions and font sizes refer to the exported file at its native size. Additional panels or plot columns change the surrounding layout, not the configured frame dimensions.
 
 ## 2. Four Groups of Phase Trajectory ＋ Waveform Plots
 
@@ -74,9 +66,10 @@ Applies to the [one-dimensional bifurcation and Lyapunov exponent comparison wor
 
 ## 6. Plot Counts or Arrangements Outside the Presets
 
-- When the plot count, arrangement, vertical-axis display, or text space for time-domain plots does not match the presets above, retain the preset canvas dimensions for the corresponding plot type and recalculate the plot boxes, margins, and gaps; do not mechanically apply the four-group coordinates.
+- For pure time-series plots, retain each configured internal frame and derive the surrounding geometry under Section 1. Do not apply a fixed canvas or the phase/waveform coordinates to this plot type.
+- When the plot count, arrangement, vertical-axis display, or text space for phase/waveform plots does not match the preset above, retain its preset canvas dimensions and recalculate the plot boxes, margins, and gaps; do not mechanically apply the four-group coordinates.
 - When MAT slices do not match the three-slice, single-row preset, recalculate the number of rows and the canvas using this placement's rule of at most three columns; increase the height automatically only when category labels or multirow content actually require it.
-- For independent coordinate plots, retain each configured internal box and calculate the surrounding geometry under Section 4. Do not apply the time-domain workflows' fixed-canvas rule to this plot type.
-- For bifurcation and Lyapunov exponent comparisons, retain each configured upper and lower internal box and calculate the surrounding geometry under Section 5. Do not apply the time-domain workflows' fixed-canvas rule to this plot type.
+- For independent coordinate plots, retain each configured internal box and calculate the surrounding geometry under Section 4. Do not apply the phase/waveform workflow's fixed-canvas rule to this plot type.
+- For bifurcation and Lyapunov exponent comparisons, retain each configured upper and lower internal box and calculate the surrounding geometry under Section 5. Do not apply the phase/waveform workflow's fixed-canvas rule to this plot type.
 - Any revised layout must preserve the structural requirements in the selected plot-type file and the font, readability, and no-clipping requirements in the main workflow.
-- If time-domain plots cannot achieve a clear layout without overlap or clipping within the preset canvas, report the conflict and ask the user for new dimensions; do not silently enlarge or shrink the canvas. For MAT slices, only the established automatic derivation and height increases described above are allowed; other dimension changes still require confirmation.
+- If phase/waveform plots cannot achieve a clear layout without overlap or clipping within the preset canvas, report the conflict and ask the user for new dimensions; do not silently enlarge or shrink the canvas. For MAT slices, only the established automatic derivation and height increases described above are allowed; other dimension changes still require confirmation.
