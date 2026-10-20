@@ -91,6 +91,7 @@ Physical dimensions are specified solely by the selected placement file. The ren
 | `x_label`, `y_label` | Coordinate variables and units |
 | `font_name`, `font_size_pt` | Font and font size; defaults follow the main workflow |
 | `panel_labels` | Panel-label list; empty values generate labels automatically in input order |
+| `text_layouts` | Optional explicit scientific text layouts for selected labels; see below |
 | `title_interpreter`, `label_interpreter` | `none` or `tex` |
 | `x_label_offset_mm`, `y_label_offset_mm`, `x_tick_offset_mm`, `y_tick_offset_mm`, `title_offset_mm`, `tick_length_mm` | Independent millimeter offsets for horizontal and vertical labels, tick text, titles, and tick marks |
 | `border_color`, `line_width_pt` | Parallelogram border color and line width |
@@ -100,6 +101,41 @@ Physical dimensions are specified solely by the selected placement file. The ren
 | `visible`, `preview_width_px` | Figure visibility and optional preview width |
 
 When text overlaps, adjust spacing, margins, the colorbar, and the canvas first, retaining the default font and font size. For all field definitions, use the help text and `default_options` in the [renderer](../../scripts/render_bifurcation_slices.m).
+
+### Explicit Scientific Text Layouts
+
+Apply the [shared typography rules](../typography.md) to all displayed mathematics, including the fixed 1 pt upward shift of subscripts. The adapter must supply structured mathematical content to the shared [text compositor](../../scripts/draw_scientific_text.m) through `options.text_layouts`; the renderer does not infer subscripts from an underscore, category name, filename, or arbitrary TeX string. Existing string inputs and the renderer signature remain supported. Empty layouts retain the original string display, so adapters must explicitly configure any mathematical subscripts in those labels.
+
+`text_layouts` is an optional scalar struct with only the following fields:
+
+| Field | Value |
+| --- | --- |
+| `x_label`, `y_label` | A scientific text atom vector, used for each displayed label on that coordinate; empty means the original string |
+| `panel_labels`, `slice_titles` | Cell vectors with one entry per slice; each nonempty entry is an atom vector, and an empty entry retains the original panel label or title |
+| `category_labels` | A cell vector with one entry per category in the verified code/display order; empty entries retain the original colorbar label |
+
+An atom has a literal `text` field and optional `subscript`, `superscript`, font-angle, and point-size fields described in the typography reference. The compositor measures the same native expression, retains its font sizes and body/superscript positions, and moves only declared subscripts by 1 pt in the label's local upward direction. This applies equally to sheared horizontal labels, 90-degree vertical labels, titles, and category labels. Do not replace text with Unicode subscript glyphs or raster images.
+
+For example, after verifying that the coordinate is `v_C` and its unit is `s` to the power of mathematical minus one, prepare its displayed form explicitly:
+
+```matlab
+options.x_label = 'v_C, s^-1'; % Original display alias retained for traceability.
+options.text_layouts.x_label = [ ...
+    struct('text', 'v', 'subscript', 'C', 'superscript', '', ...
+        'font_angle', 'italic', 'subscript_angle', 'italic', 'superscript_angle', 'normal'), ...
+    struct('text', ', s', 'subscript', '', 'superscript', char([8722, 49]), ...
+        'font_angle', 'normal', 'subscript_angle', 'normal', 'superscript_angle', 'normal')];
+options.text_layouts.slice_titles = { ...
+    struct('text', 'p', 'subscript', 'in', 'font_angle', 'italic', 'subscript_angle', 'normal'), [], []};
+options.text_layouts.category_labels = { ...
+    struct('text', 'P', 'subscript', '1', 'font_angle', 'italic', 'subscript_angle', 'normal'), [], []};
+```
+
+Here `v`, the confirmed variable subscript `C`, `p`, and `P` are explicitly italic, while the descriptive subscript `in`, numeric index `1`, unit `s`, and negative unit exponent are upright. Configure Greek variables and other variable subscripts explicitly in the same way; do not italicize arbitrary text or infer a subscript's meaning from its spelling.
+
+The last two lists illustrate three slices and three categories, respectively; adapt their lengths and meanings to the verified inputs. A structured slice title is composed with the original automatic panel prefix unless a structured panel prefix is also supplied. When either part of a combined panel/title is structured, a fallback part requiring TeX interpretation must also receive explicit atoms; the renderer reports this case rather than flattening or guessing its markup. Fully unselected titles retain their original interpreter behavior.
+
+Rich labels remain editable MATLAB text groups. Category replacements occupy the same color-block centers, hide only the corresponding native tick labels, and preserve original display aliases and numeric category codes in figure/colorbar metadata. Their actual text bounds participate in clipping checks. If layout geometry changes, redraw from the original atoms rather than adding another baseline shift to existing runs.
 
 ## 7. Real MAT Adaptation and Demo
 
@@ -140,6 +176,7 @@ By default, the demo draws five small synthetic categorical planes. It loads Sai
 - Verify category names, aliases, colors, order, and alignment with colorbar centers. Do not validate real data against the example category table.
 - Check consistency between exported pixels, physical dimensions, and DPI, allowing small differences from integer DPI and pixel rounding. Reopen the FIG to confirm that slices, text, and the colorbar remain editable.
 - Inspect the high-resolution PNG and reopened FIG for clipped or overlapping text, the longest colorbar labels, boundary samples, and spacing between rows. Adjust any issues, then export and inspect again.
+- For structured labels, verify the 1 pt local upward subscript correction against the native expression while keeping main text and superscripts unchanged. Check sheared and vertical labels, combined panel/title text, colorbar centers, original label/code metadata, and editability after reopening the FIG. Literal underscores and ordinary hyphens must remain literal when configured that way.
 - When modifying the general renderer, cover single-slice, three-slice, multirow, different-grid, and custom-category cases. When changing only the layout or adapter entry point, run the relevant checks. Provide program and output links, and distinguish plotting checks from numerical verification of dynamics.
 
 The [synthetic three-slice preview](../../assets/default-three-slice-preview.png) illustrates only the default one-column visual layout. Its category names, codes, and colors are not requirements for other datasets.

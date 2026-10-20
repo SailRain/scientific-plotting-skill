@@ -220,6 +220,183 @@ verifyError(testCase, @() render_bifurcation_slices(slices, categories, options)
     'BifurcationSlices:MissingFont');
 end
 
+function testStructuredLabelsBothBackends(testCase)
+backends = {'print', 'exportgraphics'};
+for b = 1:numel(backends)
+    if strcmp(backends{b}, 'exportgraphics') && verLessThan('matlab', '25.1')
+        continue;
+    end
+    [slices, categories, options] = fixture(3);
+    slices(1).title = 'p_in';
+    slices(2).title = 'Run_2';
+    categories.labels = {'P_1', 'Run_1', 'lambda_2', 'time-response'};
+    original_slices = slices;
+    original_categories = categories;
+    options.margins_mm = [14, 9, 24, 7];
+    options.x_label = 'v_C, s^-1';
+    options.y_label = 'lambda_1';
+    options.text_layouts.x_label = [scientific_atom('v', 'C', '', 'italic', 'italic'), ...
+        scientific_atom(', s', '', char([8722, 49]))];
+    options.text_layouts.y_label = scientific_atom(char(955), '1', '', 'italic');
+    options.text_layouts.panel_labels = {[], scientific_atom('q', 'a', '', 'italic', 'italic'), []};
+    options.text_layouts.slice_titles = {scientific_atom('p', 'in', '', 'italic'), [], []};
+    options.text_layouts.category_labels = {scientific_atom('P', '1', '', 'italic'), [], ...
+        scientific_atom(char(955), '2', '', 'italic'), []};
+    options.export_backend = backends{b};
+    options.output_prefix = fullfile(testCase.TestData.output_dir, ...
+        ['structured_labels_', backends{b}]);
+    [fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
+    cleanup = onCleanup(@() close(fig));
+    verify_data(testCase, fig, ax, cb, slices, categories);
+    verifyEqual(testCase, slices, original_slices);
+    verifyEqual(testCase, categories, original_categories);
+    verify_structured_labels(testCase, fig, ax, cb, options, categories);
+    verify_png(testCase, [options.output_prefix, '.png'], fig.UserData.layout, 600);
+    verify_raster_cells(testCase, [options.output_prefix, '.png'], fig, slices, categories);
+    reopened = openfig([options.output_prefix, '.fig'], 'invisible');
+    reopen_cleanup = onCleanup(@() close(reopened));
+    reopened_ax = findall(reopened, 'Type', 'axes');
+    reopened_cb = findall(reopened, 'Type', 'colorbar');
+    verify_structured_labels(testCase, reopened, reopened_ax, reopened_cb, options, categories);
+    group = findobj(reopened_ax, 'Type', 'hggroup', 'Tag', 'x_label_1');
+    text_runs = findall(group, 'Type', 'text');
+    text_runs(1).String = 'editable';
+    verifyEqual(testCase, text_runs(1).String, 'editable');
+    clear reopen_cleanup cleanup;
+end
+end
+
+function testStructuredLayoutValidationAndLiteralFallback(testCase)
+[slices, categories, options] = fixture(1);
+options.text_layouts = struct('misspelled', []);
+verifyError(testCase, @() render_bifurcation_slices(slices, categories, options), ...
+    'BifurcationSlices:InvalidTextLayouts');
+options.text_layouts = struct('x_label', {{'not atoms'}});
+verifyError(testCase, @() render_bifurcation_slices(slices, categories, options), ...
+    'BifurcationSlices:InvalidTextLayouts');
+options.text_layouts = struct('panel_labels', {{scientific_atom('q', 'a', '')}});
+options.title_interpreter = 'tex';
+slices.title = 'p_{in}';
+verifyError(testCase, @() render_bifurcation_slices(slices, categories, options), ...
+    'BifurcationSlices:MixedTextLayouts');
+options.title_interpreter = 'none';
+for name = {'panel_labels', 'slice_titles', 'category_labels'}
+    options.text_layouts = struct();
+    options.text_layouts.(name{1}) = {[], []};
+    verifyError(testCase, @() render_bifurcation_slices(slices, categories, options), ...
+        'BifurcationSlices:TextLayoutCount');
+end
+options.text_layouts = struct('x_label', [], 'y_label', [], ...
+    'panel_labels', {{[]}}, 'slice_titles', {{[]}}, ...
+    'category_labels', {{[], [], [], []}});
+options.label_interpreter = 'none';
+options.x_label = 'Run_1';
+options.y_label = 'time-response';
+slices.title = 'file_name.mat';
+[fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
+cleanup = onCleanup(@() close(fig)); %#ok<NASGU>
+x_label = findobj(ax, 'Tag', 'x_label_1');
+y_label = findobj(ax, 'Tag', 'y_label_1');
+panel_label = findobj(ax, 'Tag', 'panel_label_1');
+verifyEqual(testCase, x_label.String, 'Run_1');
+verifyEqual(testCase, y_label.String, 'time-response');
+verifyEqual(testCase, panel_label.String, '(a) file_name.mat');
+verifyEmpty(testCase, findobj(ax, 'Type', 'hggroup'));
+verifyEqual(testCase, string(cb.TickLabels), string(categories.labels(:)));
+end
+
+function testStructuredBoundsUseActualText(testCase)
+[slices, categories, options] = fixture(1);
+options.text_layouts.category_labels = { ...
+    scientific_atom('This deliberately long category label', '1', ''), [], [], []};
+verifyError(testCase, @() render_bifurcation_slices(slices, categories, options), ...
+    'BifurcationSlices:TextOutsideFigure');
+end
+
+function atom = scientific_atom(main, subscript, superscript, main_angle, subscript_angle)
+if nargin < 4
+    main_angle = 'normal';
+end
+if nargin < 5
+    subscript_angle = 'normal';
+end
+atom = struct('text', main, 'subscript', subscript, 'superscript', superscript, ...
+    'font_angle', main_angle, 'subscript_angle', subscript_angle, ...
+    'superscript_angle', 'normal');
+end
+
+function verify_structured_labels(testCase, fig, ax, cb, options, categories)
+for k = 1:3
+    group = findobj(ax, 'Type', 'hggroup', 'Tag', sprintf('x_label_%d', k));
+    verifyEqual(testCase, numel(group), 1);
+    verifyEqual(testCase, group.UserData.original_display_text, options.x_label);
+    verifyGreaterThan(testCase, numel(findall(group, 'Type', 'text')), 1);
+    metrics = getappdata(group, 'ScientificTextMetrics');
+    verifyEqual(testCase, metrics.subscript_raise_pt, 1);
+    verify_run_angle(testCase, group, 'text', 'v', 'italic');
+    verify_run_angle(testCase, group, 'subscript', 'C', 'italic');
+    verify_run_angle(testCase, group, 'text', ', s', 'normal');
+    verify_run_angle(testCase, group, 'superscript', char([8722, 49]), 'normal');
+end
+group = findobj(ax, 'Type', 'hggroup', 'Tag', 'y_label_1');
+verifyEqual(testCase, group.UserData.original_display_text, options.y_label);
+runs = findall(group, 'Type', 'text');
+verifyEqual(testCase, [runs.Rotation], repmat(90, 1, numel(runs)));
+verify_run_angle(testCase, group, 'text', char(955), 'italic');
+verify_run_angle(testCase, group, 'subscript', '1', 'normal');
+group = findobj(ax, 'Type', 'hggroup', 'Tag', 'panel_label_1');
+runs = findall(group, 'Type', 'text');
+verifyTrue(testCase, any(strcmp({runs.String}, '(a)')));
+verifyTrue(testCase, any(strcmp({runs.String}, 'in')));
+verify_run_angle(testCase, group, 'text', 'p', 'italic');
+verify_run_angle(testCase, group, 'subscript', 'in', 'normal');
+verify_run_angle(testCase, group, 'text', '(a)', 'normal');
+group = findobj(ax, 'Type', 'hggroup', 'Tag', 'panel_label_2');
+runs = findall(group, 'Type', 'text');
+verifyTrue(testCase, any(strcmp(strtrim(string({runs.String})), 'Run_2')));
+verify_run_angle(testCase, group, 'text', 'q', 'italic');
+verify_run_angle(testCase, group, 'subscript', 'a', 'italic');
+verify_run_angle(testCase, group, 'text', 'Run_2', 'normal');
+label = findobj(ax, 'Type', 'text', 'Tag', 'panel_label_3');
+verifyEqual(testCase, label.String, '(c)');
+verifyEqual(testCase, string(cb.TickLabels), [""; "Run_1"; ""; "time-response"]);
+verifyEqual(testCase, cb.UserData.category_codes, categories.codes);
+verifyEqual(testCase, cb.UserData.category_labels, categories.labels);
+verifyEqual(testCase, fig.UserData.category_labels, categories.labels);
+for k = [1, 3]
+    group = findobj(ax, 'Type', 'hggroup', 'Tag', sprintf('category_label_%d', k));
+    verifyEqual(testCase, group.UserData.category_code, categories.codes(k));
+    verifyEqual(testCase, group.UserData.original_display_text, categories.labels{k});
+    if k == 1
+        verify_run_angle(testCase, group, 'text', 'P', 'italic');
+        verify_run_angle(testCase, group, 'subscript', '1', 'normal');
+    else
+        verify_run_angle(testCase, group, 'text', char(955), 'italic');
+        verify_run_angle(testCase, group, 'subscript', '2', 'normal');
+    end
+    metrics = getappdata(group, 'ScientificTextMetrics');
+    bar = cb.Position .* fig.UserData.layout.figure_mm([1, 2, 1, 2]);
+    center = [bar(1) + bar(3) + 1, ...
+        bar(2) + bar(4) * (k - 0.5) / numel(categories.codes)];
+    probe = text(ax, center(1), center(2), '', 'Visible', 'off');
+    probe.Units = 'points';
+    verifyEqual(testCase, metrics.anchor_pt, probe.Position(1:2), 'AbsTol', 1e-8);
+    delete(probe);
+end
+end
+
+function verify_run_angle(testCase, group, role, value, expected)
+metrics = getappdata(group, 'ScientificTextMetrics');
+selected = strcmp({metrics.runs.role}, role) & ...
+    strcmp(strtrim(string({metrics.runs.text})), value);
+runs = metrics.runs(selected);
+verifyEqual(testCase, numel(runs), 1);
+if numel(runs) == 1
+    verifyEqual(testCase, runs.font_angle, expected);
+    verifyEqual(testCase, runs.handle.FontAngle, expected);
+end
+end
+
 function testDemoDefaultOutsideSkill(testCase)
 previous_dir = pwd;
 directory_cleanup = onCleanup(@() cd(previous_dir)); %#ok<NASGU>
@@ -266,7 +443,13 @@ end
 function verify_data(testCase, fig, ax, cb, slices, categories)
 verifyEqual(testCase, ax.CLim, [0.5, numel(categories.codes) + 0.5]);
 verifyEqual(testCase, cb.Ticks, 1:numel(categories.codes));
-verifyEqual(testCase, string(cb.TickLabels), string(categories.labels(:)));
+expected_labels = categories.labels(:);
+if isfield(fig.UserData.layout.text_layouts, 'category_labels') && ...
+        ~isempty(fig.UserData.layout.text_layouts.category_labels)
+    rich = ~cellfun(@isempty, fig.UserData.layout.text_layouts.category_labels);
+    expected_labels(rich) = {''};
+end
+verifyEqual(testCase, string(cb.TickLabels), string(expected_labels));
 verifyEqual(testCase, cb.AxisLocation, 'out');
 verifyEqual(testCase, colormap(ax), categories.colors);
 for k = 1:numel(slices)

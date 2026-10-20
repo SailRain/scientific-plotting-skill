@@ -11,6 +11,9 @@ function [fig, ax, cb] = render_bifurcation_slices(slices, categories, options)
 %   later and print with explicit paper dimensions on earlier releases.
 %   OPTIONS.export_backend can be auto (default), exportgraphics, or print.
 %   The selected PNG backend is recorded in FIG.UserData.export_backend.
+%   Optional OPTIONS.text_layouts explicitly supplies scientific text atoms
+%   for labels; existing string interpreter behavior is preserved without
+%   guessing structured subscripts. See the plot-type reference for details.
 %   No classification or simulation is run.
 
 if nargin < 3
@@ -90,6 +93,7 @@ try
     % Manual positions can trigger automatic labels on the inner side in
     % tall layouts. Pin the labels to the outer/right side of this bar.
     cb.AxisLocation = 'out';
+    draw_category_labels(ax, cb, categories, options);
     fig.UserData = struct('layout', options, 'origins_mm', origins, ...
         'category_codes', categories.codes, 'category_labels', {categories.labels}, ...
         'source_files', {{slices.source_file}});
@@ -119,6 +123,7 @@ options = struct( ...
     'figure_mm', [], 'colorbar_mm', [], ...
     'x_limits', [], 'y_limits', [], 'x_ticks', [], 'y_ticks', [], ...
     'x_label', 'x', 'y_label', 'y', 'panel_labels', {{}}, ...
+    'text_layouts', struct(), ...
     'font_name', 'Times New Roman', 'font_size_pt', 8, ...
     'label_interpreter', 'tex', 'title_interpreter', 'none', ...
     'x_label_offset_mm', 5.1, 'y_label_offset_mm', 8, ...
@@ -287,6 +292,43 @@ assert(any(strcmp(backend, {'auto', 'exportgraphics', 'print'})), ...
 assert(ismember(string(options.title_interpreter), ["none", "tex"]) && ...
     ismember(string(options.label_interpreter), ["none", "tex"]), ...
     'BifurcationSlices:InvalidInterpreter', 'Use none or tex to retain the requested font.');
+validate_text_layouts(options.text_layouts, count, category_count);
+end
+
+function validate_text_layouts(layouts, count, category_count)
+assert(isstruct(layouts) && isscalar(layouts), ...
+    'BifurcationSlices:InvalidTextLayouts', 'text_layouts must be a scalar struct.');
+allowed = {'x_label', 'y_label', 'panel_labels', 'slice_titles', 'category_labels'};
+assert(all(ismember(fieldnames(layouts), allowed)), ...
+    'BifurcationSlices:InvalidTextLayouts', 'Unknown text_layouts field.');
+for name = {'x_label', 'y_label'}
+    if isfield(layouts, name{1}) && ~isempty(layouts.(name{1}))
+        validate_atoms(layouts.(name{1}));
+    end
+end
+for name = {'panel_labels', 'slice_titles', 'category_labels'}
+    if ~isfield(layouts, name{1}) || isempty(layouts.(name{1}))
+        continue;
+    end
+    entries = layouts.(name{1});
+    expected = count;
+    if strcmp(name{1}, 'category_labels')
+        expected = category_count;
+    end
+    assert(iscell(entries) && isvector(entries) && numel(entries) == expected, ...
+        'BifurcationSlices:TextLayoutCount', ...
+        'text_layouts.%s must be a cell vector with %d entries.', name{1}, expected);
+    for k = 1:numel(entries)
+        if ~isempty(entries{k})
+            validate_atoms(entries{k});
+        end
+    end
+end
+end
+
+function validate_atoms(atoms)
+assert(isstruct(atoms) && isvector(atoms) && ~isempty(atoms) && isfield(atoms, 'text'), ...
+    'BifurcationSlices:InvalidTextLayouts', 'Each nonempty layout must be a scientific text atom vector.');
 end
 
 function label = panel_label(index)
@@ -330,12 +372,41 @@ for tick = options.x_ticks(:).'
         'VerticalAlignment', 'top', 'Rotation', angle, 'Tag', sprintf('x_tick_%d', index));
 end
 [x, y] = coordinates(mean(a), f(1), origin, options);
-slice_text(ax, x, y - options.x_label_offset_mm, options.x_label, options, ...
-    'Interpreter', options.label_interpreter, 'Rotation', angle, 'Tag', sprintf('x_label_%d', index));
+atoms = text_layout(options, 'x_label');
+if isempty(atoms)
+    slice_text(ax, x, y - options.x_label_offset_mm, options.x_label, options, ...
+        'Interpreter', options.label_interpreter, 'Rotation', angle, 'Tag', sprintf('x_label_%d', index));
+else
+    scientific_slice_text(ax, x, y - options.x_label_offset_mm, atoms, options, ...
+        angle, 'center', sprintf('x_label_%d', index), options.x_label);
+end
 [x, y] = coordinates(mean(a), f(2), origin, options);
 label = strtrim([options.panel_labels{index}, ' ', title]);
-slice_text(ax, x, y + options.title_offset_mm, label, options, ...
-    'Interpreter', options.title_interpreter, 'Rotation', angle, 'Tag', sprintf('panel_label_%d', index));
+panel_atoms = text_layout(options, 'panel_labels', index);
+title_atoms = text_layout(options, 'slice_titles', index);
+if isempty(panel_atoms) && isempty(title_atoms)
+    slice_text(ax, x, y + options.title_offset_mm, label, options, ...
+        'Interpreter', options.title_interpreter, 'Rotation', angle, 'Tag', sprintf('panel_label_%d', index));
+else
+    if isempty(panel_atoms) && ~isempty(options.panel_labels{index})
+        panel_atoms = literal_title_atom(options.panel_labels{index}, options);
+    end
+    if isempty(title_atoms) && ~isempty(title)
+        title_atoms = literal_title_atom(title, options);
+    end
+    if isempty(panel_atoms)
+        atoms = title_atoms;
+    elseif isempty(title_atoms)
+        atoms = panel_atoms;
+    else
+        % A visible title run retains the separator advance in native SVG;
+        % whitespace-only runs can be omitted by the MATLAB exporter.
+        title_atoms(1).text = [' ', text_scalar(title_atoms(1).text, 'title atom text')];
+        atoms = concatenate_atoms(panel_atoms, title_atoms);
+    end
+    scientific_slice_text(ax, x, y + options.title_offset_mm, atoms, options, ...
+        angle, 'center', sprintf('panel_label_%d', index), label);
+end
 if row_start
     for tick = options.y_ticks(:).'
         [x, y] = coordinates(a(1), tick, origin, options);
@@ -344,9 +415,107 @@ if row_start
             'HorizontalAlignment', 'right', 'Tag', sprintf('y_tick_%d', index));
     end
     [x, y] = coordinates(a(1), mean(f), origin, options);
-    slice_text(ax, x - options.y_label_offset_mm, y, options.y_label, options, ...
-        'Interpreter', options.label_interpreter, 'Rotation', 90, 'Tag', sprintf('y_label_%d', index));
+    atoms = text_layout(options, 'y_label');
+    if isempty(atoms)
+        slice_text(ax, x - options.y_label_offset_mm, y, options.y_label, options, ...
+            'Interpreter', options.label_interpreter, 'Rotation', 90, 'Tag', sprintf('y_label_%d', index));
+    else
+        scientific_slice_text(ax, x - options.y_label_offset_mm, y, atoms, options, ...
+            90, 'center', sprintf('y_label_%d', index), options.y_label);
+    end
 end
+end
+
+function atom = literal_title_atom(value, options)
+% A mixed rich/native title must not flatten interpreted legacy TeX.
+requires_interpretation = strcmp(options.title_interpreter, 'tex') && ...
+    ~isempty(regexp(value, '[\\_^{}]', 'once'));
+assert(~requires_interpretation, 'BifurcationSlices:MixedTextLayouts', ...
+    ['A structured panel/title has a fallback part containing TeX markup. ', ...
+    'Supply explicit text_layouts atoms for that part as well.']);
+atom = struct('text', value);
+end
+
+function atoms = text_layout(options, field, index)
+atoms = [];
+if ~isfield(options.text_layouts, field) || isempty(options.text_layouts.(field))
+    return;
+end
+atoms = options.text_layouts.(field);
+if nargin > 2
+    atoms = atoms{index};
+end
+end
+
+function atoms = concatenate_atoms(varargin)
+% A literal prefix or suffix is not interpreted as mathematical markup.
+fields = {'text'};
+for k = 1:nargin
+    fields = union(fields, fieldnames(varargin{k}), 'stable');
+end
+atoms = [];
+for k = 1:nargin
+    part = varargin{k}(:).';
+    for f = 1:numel(fields)
+        if ~isfield(part, fields{f})
+            [part.(fields{f})] = deal([]);
+        end
+    end
+    part = orderfields(part, fields);
+    if isempty(atoms)
+        atoms = part;
+    else
+        atoms = [atoms, part]; %#ok<AGROW>
+    end
+end
+end
+
+function group = scientific_slice_text(ax, x, y, atoms, options, rotation, alignment, tag, original)
+% Convert the existing drawing-axis anchor, including its plot-box mapping,
+% to the physical coordinates accepted by the shared text compositor.
+probe = slice_text(ax, x, y, '', options, 'Visible', 'off');
+probe.Units = 'points';
+anchor = probe.Position(1:2);
+delete(probe);
+text_options = struct('font_name', options.font_name, ...
+    'font_size_pt', options.font_size_pt, 'color', [0, 0, 0], ...
+    'rotation', rotation, 'horizontal_alignment', alignment, ...
+    'vertical_alignment', 'middle', 'subscript_raise_pt', 1, 'tag', tag);
+[group, ~] = draw_scientific_text(ax, anchor, atoms, text_options);
+data = group.UserData;
+if isempty(data)
+    data = struct();
+end
+data.original_display_text = original;
+group.UserData = data;
+end
+
+function draw_category_labels(ax, cb, categories, options)
+entries = text_layout(options, 'category_labels');
+if isempty(entries) || all(cellfun(@isempty, entries))
+    return;
+end
+drawnow;
+native_labels = categories.labels;
+position = cb.Position .* options.figure_mm([1, 2, 1, 2]);
+right_edge = position(1) + position(3);
+for k = 1:numel(categories.codes)
+    atoms = text_layout(options, 'category_labels', k);
+    if isempty(atoms)
+        continue;
+    end
+    native_labels{k} = '';
+    y = position(2) + position(4) * (k - 0.5) / numel(categories.codes);
+    group = scientific_slice_text(ax, right_edge + 1, y, atoms, options, ...
+        0, 'left', sprintf('category_label_%d', k), categories.labels{k});
+    data = group.UserData;
+    data.category_index = k;
+    data.category_code = categories.codes(k);
+    group.UserData = data;
+end
+cb.TickLabels = native_labels;
+cb.UserData = struct('category_codes', categories.codes, ...
+    'category_labels', {categories.labels}, 'text_layouts', {entries});
 end
 
 function label = numeric_tick_label(value)
@@ -366,7 +535,10 @@ for h = findall(ax, 'Type', 'text').'
     if isempty(h.String)
         continue;
     end
+    units = h.Units;
+    h.Units = 'data';
     e = h.Extent;
+    h.Units = units;
     assert(e(1) >= 0 && e(2) >= 0 && e(1) + e(3) <= options.figure_mm(1) && ...
         e(2) + e(4) <= options.figure_mm(2), 'BifurcationSlices:TextOutsideFigure', ...
         'Text %s lies outside the figure; adjust margins or label offsets.', h.Tag);
@@ -377,6 +549,11 @@ probe = slice_text(ax, 0, 0, '', options, 'Visible', 'off', 'HorizontalAlignment
 cleanup = onCleanup(@() delete(probe));
 widest = 0;
 for k = 1:numel(labels)
+    if ~isempty(text_layout(options, 'category_labels', k))
+        % The editable replacement is included in the Text bounds above.
+        % Keep this native-label probe limited to labels still on the bar.
+        continue;
+    end
     probe.String = labels{k};
     widest = max(widest, probe.Extent(3));
 end
