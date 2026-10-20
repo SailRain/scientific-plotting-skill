@@ -1,4 +1,19 @@
-# Scientific Plotting
+<h1 align="center">Scientific Plotting</h1>
+
+<p align="center">
+  Publication-ready scientific figures from existing numerical data in MATLAB.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-97CA00?style=flat" alt="License: MIT" /></a>
+  <a href="#requirements"><img src="https://img.shields.io/badge/MATLAB-plotting-FE7D37?style=flat" alt="MATLAB: plotting" /></a>
+  <a href="scientific-plotting/SKILL.md"><img src="https://img.shields.io/badge/AI%20agent-skill-007EC6?style=flat" alt="AI agent: skill" /></a>
+  <a href="https://sailrain.github.io/"><img src="https://img.shields.io/badge/A%20SailRain-work-00897B?style=flat" alt="A SailRain work" /></a>
+</p>
+
+---
+
+## Overview
 
 A MATLAB-based scientific plotting skill for creating publication-ready figures from existing numerical data. It combines instructions for interpreting and drawing a particular plot type with instructions for arranging that figure in its intended placement.
 
