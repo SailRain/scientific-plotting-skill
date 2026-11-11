@@ -37,12 +37,12 @@ Declare italic styling for each variable, including variable subscripts such as 
 
 Options include `font_name` (Times New Roman), `font_size_pt` (`8`), `color`, `rotation`, `horizontal_alignment`, `vertical_alignment`, `subscript_raise_pt` (`1`), and an optional `tag`. Preserve explicit task typography. Use another correction only when explicitly requested; `0` can be used for a verification control. The returned group contains editable native text objects. `metrics.extent_pt` describes its complete rendered bounds in the parent axes' point coordinates; native-layout and run metadata support verification and placement calculations. For outlined SVG output, a safe-payload probe supplies font metadata only; the original glyphs supply all position measurements and must pass complete outline matching.
 
-For example, after finalizing the axes geometry:
+After finalizing the axes geometry, pass the selected main-text size explicitly so the helper's 8 pt default does not override a compact layout or a user setting. In this example, `ax.FontUnits` is `points` and `ax.FontSize` is already set to the selected size:
 
 ```matlab
 atom = struct('text', 'v', 'subscript', 'C', ...
     'font_angle', 'italic', 'subscript_angle', 'italic');
-text_options = struct('horizontal_alignment', 'center', ...
+text_options = struct('font_size_pt', ax.FontSize, 'horizontal_alignment', 'center', ...
     'vertical_alignment', 'baseline', 'tag', 'voltage_label');
 [label_group, label_metrics] = draw_scientific_text( ...
     ax, [40, 20], atom, text_options);
@@ -78,7 +78,7 @@ text(ax, 0.05, 0.9, ['Offset = ' minus_sign '0.5'], ...
     'Units', 'normalized', 'Interpreter', 'none');
 ```
 
-Use the common Times New Roman and 8 pt defaults for the axis and text objects, or their explicit user overrides. This example is not a global axes formatter; adapt it to the confirmed precision, scaling, and visibility of each ruler.
+Use Times New Roman and the selected placement's main-text size for the axis and text objects, with explicit user overrides taking precedence. The common default is 8 pt; the compact side-by-side layout within one column defaults to 7 pt. This example is not a global axes formatter; adapt it to the confirmed precision, scaling, and visibility of each ruler.
 
 ## Categorical Slice Renderer and Adapters
 
@@ -89,7 +89,7 @@ Use the common Times New Roman and 8 pt defaults for the axis and text objects, 
 
 ## Acceptance
 
-- Check the actual exported characters and fonts, not only the MATLAB source. In a vector PDF, confirm that known mathematical negative signs extract as U+2212 and use embedded Times New Roman without a fallback font. Main text remains at its configured size, 8 pt by default; superscripts and subscripts may be smaller.
+- Check the actual exported characters and fonts, not only the MATLAB source. In a vector PDF, confirm that known mathematical negative signs extract as U+2212 and use embedded Times New Roman without a fallback font. Main text remains at its configured size; superscripts and subscripts may be smaller.
 - Compare corrected text with an untouched native reference at the same settings. Each subscript must move `1.00 pt` along the local upward direction, within `0.05 pt`; main-text, unit, and superscript positions must remain within `0.05 pt` of the reference, with identical sizes and styles. Check horizontal, vertical, tilted, and combined-script examples. SVG calibration alone does not establish acceptance of a PDF or PNG backend.
 - Inspect the final high-resolution rendering for missing glyphs, wrong baseline placement, clipping, and overlap, including negative ticks, negative powers, right-side axes, formulas, legends, annotations, and colorbar labels. Follow the plot type's existing vector PDF/derived PNG or editable FIG/native PNG checks.
 - Verify that source values, pairings, limits, tick positions, display factors, hidden-label modes, and nonmathematical hyphens remain intact. Record the MATLAB release and export backends actually tested; compatibility targets do not certify releases not run.
