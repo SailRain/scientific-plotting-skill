@@ -1,6 +1,6 @@
-# MAT Bifurcation and Categorical Plane Slice Workflow
+# Slice Plots
 
-Read this file only when rendering existing MAT two-dimensional categorical planes, such as bifurcation maps or basins of attraction, as sheared slices. Also apply the [scientific plotting workflow](../../SKILL.md) and the selected placement file. This plot type includes a [renderer](../../scripts/render_bifurcation_slices.m), a [synthetic demo](../../scripts/demo_bifurcation_slices.m), and a [default visual preview](../../assets/default-three-slice-preview.png).
+Use this workflow to render existing two-dimensional discrete categorical planes as sheared slices. Bifurcation maps and basins of attraction are examples; other categorical planes can use the same input structure. Also apply the [scientific plotting workflow](../../SKILL.md) and the selected placement file. This plot type includes a [placement-aware renderer](../../scripts/render_slice_plots.m), a [synthetic demo](../../scripts/demo_bifurcation_slices.m), and a [three-slice preview](../../assets/default-three-slice-preview.png).
 
 The current workflow focuses on faithfully displaying existing data. Do not run simulations, reclassify data, design classification criteria, or infer dynamical mechanisms. The compatibility target is MATLAB R2020a or later. The renderer selects a full-canvas export backend for the installed release, as described in Section 8; this target does not imply that every release has been tested. See the repository README for the releases actually tested.
 
@@ -9,7 +9,7 @@ The current workflow focuses on faithfully displaying existing data. Do not run 
 - Inspect the user-specified MAT files, metadata, and applicable existing programs first. Do not infer categories, fields, units, parameters, figure count, or grids from reference examples.
 - The current renderer supports numeric category codes and one shared discrete colorbar. Separate colorbars, continuous numerical planes, RGB images, legends, or missing-value masks require selecting or extending the implementation for the specific task. Do not treat each continuous value as a category or infer classifications from RGB colors.
 - Write a small data-adaptation entry point in the user's working directory and save results to an explicit output directory. Treat the original MAT files as read-only. Do not write real data or generated results into the skill directory, and preserve applicable existing program interfaces.
-- Before running, load only this skill's `scripts` directory or one explicitly selected tool directory, and verify the resolved path with `which render_bifurcation_slices` to avoid using a same-name function elsewhere on the MATLAB path.
+- Before running, load only this skill's `scripts` directory or one explicitly selected tool directory, and verify the resolved path with `which render_slice_plots`.
 
 ## 2. Verify Data and Display Semantics
 
@@ -23,7 +23,7 @@ The current workflow focuses on faithfully displaying existing data. Do not run 
 ## 3. MATLAB Interface
 
 ```matlab
-[fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
+[fig, ax, cb] = render_slice_plots(slices, categories, placement, available_width_mm, options);
 ```
 
 `slices` is a nonempty struct vector whose elements contain:
@@ -42,7 +42,9 @@ The current workflow focuses on faithfully displaying existing data. Do not run 
 - `labels`: display labels with the same length as the code vector;
 - `colors`: an `N×3` RGB table in the same order as the codes.
 
-The returned `fig` is an editable figure, `ax` is the shared physical drawing axis containing all slices, and `cb` is the shared colorbar. `ax` is not an array of individual axes for the slices.
+`placement` is the base name of the selected placement file without `.md`: `one-column-document-full-width`, `two-column-document-single-column`, or `two-column-document-spanning`. Supply the available width for the entire canvas in millimeters. For `two-column-document-single-column`, omit the width or pass `[]` to use `89 mm`. Supply the actual available width for either other placement. `options` is optional.
+
+The returned `fig` is an editable figure, `ax` is one shared physical drawing axis containing all slices, and `cb` is the shared colorbar. Established MATLAB scripts can also call `render_bifurcation_slices(slices, categories, options)` directly for manual layout. Both entry points use the same default slice dimensions.
 
 ## 4. Category Mapping and Shared Colorbar
 
@@ -59,7 +61,7 @@ The following illustrates the interface only and assigns no universal meaning to
 scheme = load_color_scheme();
 palette_indices = [1, 2, 12];
 categories.codes = [-4, 7, 42];
-categories.labels = {'Zone A', 'Zone B', 'Zone C'};
+categories.labels = {'A', 'B', 'C'};
 categories.colors = scheme.categorical_colors(palette_indices, :);
 ```
 
@@ -75,20 +77,23 @@ The adapter selects colors and passes the explicit RGB array to the renderer. Th
 
 ## 6. Placement and options
 
-Physical dimensions are specified solely by the selected placement file. The renderer's physical default fields implement the [full-width placement for a one-column document](../placements/one-column-document-full-width.md); these defaults may be used directly when no placement is specified. For either two-column placement, obtain the complete dimensions required by its file first and set them explicitly in `options`. Do not allow one-column defaults to carry over into two-column figures.
+The [one-column](../placements/one-column-document-full-width.md), [nonspanning two-column](../placements/two-column-document-single-column.md), and [spanning two-column](../placements/two-column-document-spanning.md) placements all start from a `23 mm` slice width, `27 mm` vertical edges, and an `8 mm` downward drop to the right. The placement-aware renderer uses the available width and measured text to choose the number of columns and calculate the spacing and canvas. Specify only the fields that the task needs to override.
 
-`options` is a scalar struct. Omitted fields use renderer defaults, and unknown fields produce an error so that misspelled options are not ignored. Common fields are:
+Confirm that the slices use the same horizontal variable meaning, units, scale, display range, and ticks before setting `options.x_text_mode = 'bottom-per-column'`. This mode shows the horizontal tick labels and axis label on the lowest occupied slice in each column, including the slice above an empty position in the last row. Each slice retains its horizontal tick marks. Use the default `each-slice` to draw full horizontal text on every slice when sharing has not been confirmed. The vertical label and tick text appear on the leftmost slice of each row.
+
+`options` is a scalar struct. Omitted fields use defaults or are resolved by the placement-aware renderer. Unknown fields produce an error. Common fields are:
 
 | Field | Purpose |
 |---|---|
-| `columns` | Number of slices per row |
-| `slice_width_mm`, `slice_height_mm` | Physical width and height of each slice |
-| `slice_drop_mm`, `slice_gap_mm`, `row_gap_mm` | Shear drop, gap between slices, and gap between rows |
+| `columns` | Explicit number of slices per row. Omit for automatic selection in the placement-aware renderer |
+| `slice_width_mm`, `slice_height_mm`, `slice_drop_mm` | Horizontal width, vertical edge height, and downward drop of each slice |
+| `slice_gap_mm`, `row_gap_mm` | Gaps between slices and between row silhouettes |
 | `margins_mm` | Physical margins in `[left,bottom,right,top]` order |
 | `figure_mm`, `colorbar_mm` | Canvas `[width,height]` and colorbar `[left,bottom,width,height]` |
 | `x_limits`, `y_limits` | Shared display ranges; empty values use the union of coordinates across all slices |
 | `x_ticks`, `y_ticks` | Shared ticks; empty values generate them automatically within the display range |
 | `x_label`, `y_label` | Coordinate variables and units |
+| `x_text_mode` | `each-slice` (default) or `bottom-per-column` for a verified shared horizontal axis |
 | `font_name`, `font_size_pt` | Font and font size; defaults follow the main workflow |
 | `panel_labels` | Panel-label list; empty values generate labels automatically in input order |
 | `text_layouts` | Optional explicit scientific text layouts for selected labels; see below |
@@ -100,7 +105,9 @@ Physical dimensions are specified solely by the selected placement file. The ren
 | `export_backend` | `auto` (default), `exportgraphics`, or `print`; selects full-canvas PNG export as described in Section 8 |
 | `visible`, `preview_width_px` | Figure visibility and optional preview width |
 
-When text overlaps, adjust spacing, margins, the colorbar, and the canvas first, retaining the default font and font size. For all field definitions, use the help text and `default_options` in the [renderer](../../scripts/render_bifurcation_slices.m).
+The placement-aware renderer treats specified gaps and margins as minimums. Explicit `figure_mm` and `colorbar_mm` values are fixed and must fit the plot, text, and available width.
+
+Keep the configured slice dimensions, typography, and labels when resolving fit. If no layout fits the available width, report the required and available widths. Overlapping tick labels on the same axis require a revised tick list or slice dimension. The renderer reports this conflict. See the MATLAB help for the [placement-aware renderer](../../scripts/render_slice_plots.m) and [manual renderer](../../scripts/render_bifurcation_slices.m) for interface details.
 
 ### Explicit Scientific Text Layouts
 
@@ -152,7 +159,8 @@ options.x_label = '{\it A}, mA';
 options.y_label = '{\it f}, Hz';
 output_dir = tempname(tempdir);
 options.output_prefix = fullfile(output_dir, 'my_slices');
-[fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
+[fig, ax, cb] = render_slice_plots(slices, categories, ...
+    'two-column-document-single-column', [], options);
 ```
 
 The actual entry point must explicitly configure the variables in this example; do not discover or guess them automatically. Set the actual directory before calling the skill tools:
@@ -160,23 +168,24 @@ The actual entry point must explicitly configure the variables in this example; 
 ```matlab
 skill_root = '/path/to/scientific-plotting';
 addpath(fullfile(skill_root, 'scripts'), '-begin');
-which render_bifurcation_slices
+which render_slice_plots
 output_dir = tempname(tempdir);
 [fig, ax, cb] = demo_bifurcation_slices(3, output_dir);
 ```
 
-By default, the demo draws five small synthetic categorical planes. It loads SailRain and selects categorical palette rows `[1, 2, 12]`, retaining the gray, bright cyan, and magenta colors of the bundled preview. The figure count and output directory may also be specified. When no output directory is provided, it creates a unique directory under MATLAB's `tempdir`, outside the installed skill directory, and reports that path. An explicitly supplied output directory is used as provided. It verifies only the plotting interface and layout, does not depend on real research data, and does not constitute simulation results or evidence of dynamical behavior.
+By default, the demo draws five small synthetic categorical planes within an `89 mm` example column and displays horizontal text on the lowest occupied slice in each column. It loads SailRain and selects categorical palette rows `[1, 2, 12]` for the gray, bright cyan, and magenta colors of the bundled preview. The slice count and output directory may also be specified. When no output directory is provided, it creates a unique directory under MATLAB's `tempdir`, outside the installed skill directory, and reports that path. An explicitly supplied output directory is used as provided. The synthetic inputs illustrate the plotting interface and layout.
 
 ## 8. Export, Acceptance Checks, and Reporting
 
 - When `output_prefix` is empty, create a figure only. Otherwise, the default exports are an editable FIG and a native MATLAB `600 dpi` PNG. The current renderer supports only `fig`, `png`, or both. This plot type does not require a PDF, and its PNG does not originate from a PDF.
-- Export with the physical width and height specified by the placement and a white background. Optional `preview_width_px` generates a lower-resolution copy for visual inspection. The preview retains the main figure's physical dimensions and reduces only DPI; it does not replace the high-resolution PNG.
+- Export at the resolved canvas width and height with a white background. Optional `preview_width_px` generates a lower-resolution copy with the same physical dimensions. Use the full-resolution PNG for acceptance.
 - `export_backend = 'auto'` uses `exportgraphics` with explicit dimensions and padding on R2025a or later, and full-canvas `print` export on R2020a–R2024b. `export_backend = 'print'` explicitly selects the compatibility path, including on newer releases. `export_backend = 'exportgraphics'` requires R2025a or later because older releases lack the required sizing controls. The main PNG and optional preview use the same selected backend. The `print` path explicitly sets `PaperUnits`, `PaperSize`, `PaperPosition`, and `PaperPositionMode` to preserve the configured canvas; it does not substitute tight cropping for physical dimensions.
 - Check file order, sources, matrix orientation, original-code-to-display-index mappings, and all samples, with particular attention to nonuniform grids and the last row and column. Invalid codes, incorrect dimensions, and cropping display ranges must produce explicit errors.
 - Verify category names, aliases, colors, order, and alignment with colorbar centers. Do not validate real data against the example category table.
 - Check consistency between exported pixels, physical dimensions, and DPI, allowing small differences from integer DPI and pixel rounding. Reopen the FIG to confirm that slices, text, and the colorbar remain editable.
+- Check the native canvas against the available width and the displayed slice dimensions against the configured geometry within `0.1 mm`. Verify the selected layout, including the placement of horizontal axis text in a partial final row.
 - Inspect the high-resolution PNG and reopened FIG for clipped or overlapping text, the longest colorbar labels, boundary samples, and spacing between rows. Adjust any issues, then export and inspect again.
 - For structured labels, verify the 1 pt local upward subscript correction against the native expression while keeping main text and superscripts unchanged. Check sheared and vertical labels, combined panel/title text, colorbar centers, original label/code metadata, and editability after reopening the FIG. Literal underscores and ordinary hyphens must remain literal when configured that way.
 - When modifying the general renderer, cover single-slice, three-slice, multirow, different-grid, and custom-category cases. When changing only the layout or adapter entry point, run the relevant checks. Provide program and output links, and distinguish plotting checks from numerical verification of dynamics.
 
-The [synthetic three-slice preview](../../assets/default-three-slice-preview.png) illustrates only the default one-column visual layout. Its category names, codes, and colors are not requirements for other datasets.
+The [synthetic three-slice preview](../../assets/default-three-slice-preview.png) shows the demo's example column layout and example category names, codes, and colors.

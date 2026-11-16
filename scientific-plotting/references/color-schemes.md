@@ -58,7 +58,7 @@ waveform_color = scheme.waveform_colors(1, :);
 phase_color = scheme.phase_trajectory_color;
 ```
 
-The example palette indices are the synthetic demo's selection, not a semantic rule. Configure the actual category and curve identities before assigning colors. The slice renderer's interface remains unchanged: pass `categories.colors` explicitly to `render_bifurcation_slices`; the renderer does not load schemes itself.
+The example palette indices are the synthetic demo's selection, not a semantic rule. Configure the actual category and curve identities before assigning colors. The slice renderer's interface remains unchanged: pass `categories.colors` explicitly to the slice renderer. The adapter selects the scheme.
 
 The loader returns a scalar struct with these fields:
 

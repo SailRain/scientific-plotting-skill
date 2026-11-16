@@ -1,6 +1,6 @@
 # Single-Column Placement in a Two-Column Document
 
-This file applies to figures that occupy one column in a two-column document without spanning both columns. Exact dimensions or complete coordinate positions provided by the user take precedence over the corresponding defaults in this file. Apart from the pure time-series, independent coordinate-plot, and bifurcation and Lyapunov exponent comparison presets below, no default physical dimensions currently exist for other plot types; do not borrow the canvas, plot boxes, or coordinate positions from the full-width placement for a one-column document.
+This file applies to figures that occupy one column in a two-column document without spanning both columns. Exact dimensions or complete coordinate positions provided by the user take precedence over the corresponding defaults in this file. Apart from the pure time-series, independent coordinate-plot, bifurcation and Lyapunov exponent comparison, and Slice Plots presets below, no default physical dimensions currently exist for other plot types; do not borrow the canvas, plot boxes, or coordinate positions from the full-width placement for a one-column document.
 
 ## 1. Pure Time-Series Plots
 
@@ -49,19 +49,25 @@ This rule applies only to the standard layouts for pure time-series plots, indep
 
 ## 5. Other Plot Types
 
-For plot types other than pure time series, independent coordinate plots, and bifurcation and Lyapunov exponent comparisons, the following information sufficient to determine the layout must be obtained from the user's current instructions or a confirmed configuration before plotting:
+For plot types without a preset in this file, the following information sufficient to determine the layout must be obtained from the user's current instructions or a confirmed configuration before plotting:
 
 - Canvas width and height;
 - Internal width and height of each type of plot box;
 - Arrangement of multiple plots and the necessary margins and gaps, or the complete position of each plot box.
 
-## 6. MAT Sheared Slices
+## 6. Slice Plots
 
-For MAT sheared slices, also obtain and explicitly configure the number of columns per row, width and height of each slice, downward drop, gap between slices, row gap where applicable, all four margins, complete canvas dimensions, and colorbar dimensions or an equivalent complete position. Explicitly set inapplicable gaps to `0`. Do not call the renderer if these fields are incomplete, because its omitted values correspond to the one-column document placement. Label, tick-text, title, and tick-mark offsets may start from the plot-type defaults but must be rechecked at the actual dimensions of this placement; explicitly override the corresponding offset fields if crowding or unbalanced proportions occur.
+Applies to [Slice Plots](../plot-types/slice-plots.md). Pass `two-column-document-single-column` to the [placement-aware renderer](../../scripts/render_slice_plots.m).
+
+- Each slice defaults to `23 mm` wide with `27 mm` vertical edges and an `8 mm` downward drop to the right. The full slice silhouette occupies `35 mm` vertically before labels. An explicit dimension overrides its corresponding field. Use `8 pt Times New Roman` by default.
+- Use a complete-canvas width limit of `89 mm` unless the user provides the actual column width.
+- Fill each row from left to right in input order, with at most three slices per row. Try three, two, then one column, skipping counts greater than the number of slices. Use the first layout that fits. If the user specifies a column count, check it against both the three-column maximum and the width limit.
+- Start with `2 mm` between slices and `4 mm` between row silhouettes. Measure visible tick text, labels, titles, and the shared colorbar labels to determine the final spacing, margins, and complete canvas. Use the horizontal text mode from the plot-type reference.
+- Check the complete canvas against the available width at native size. If the layouts cannot fit, report the required and available widths. Preserve the configured slice dimensions, font size, and labels.
 
 ## 7. Dimension Overrides and Missing Information
 
-Ask only about fields that remain undetermined and affect the layout. When the user provides exact dimensions or complete coordinate positions, follow the user's current requirements; once the dimensions are obtained, apply both the main workflow and the selected plot-type file's rules. Unless otherwise specified, pure time-series plots, independent coordinate plots, and bifurcation and Lyapunov exponent comparisons use their respective standard presets in this file, with the remaining dimensions calculated from the actual text. Use the compact arrangement only on request. When dimensions for other plot types are incomplete, do not borrow another placement's presets to proceed with plotting.
+Ask only about fields that remain undetermined and affect the layout. When the user provides exact dimensions or complete coordinate positions, follow the user's current requirements; once the dimensions are obtained, apply both the main workflow and the selected plot-type file's rules. Unless otherwise specified, pure time-series plots, independent coordinate plots, and bifurcation and Lyapunov exponent comparisons use their respective standard presets in this file, with the remaining dimensions calculated from the actual text. Use the compact arrangement only on request. Use Section 6 for Slice Plots. When dimensions for plot types without a preset are incomplete, do not borrow another placement's presets to proceed with plotting.
 
 ## 8. Compact Side-by-Side Arrangement
 

@@ -23,7 +23,7 @@ The skill is organized along two independent dimensions: **plot type** and **pla
 
 | Dimension | Responsibility | Current options |
 | --- | --- | --- |
-| Plot type | Input interpretation, plotting behavior, data checks, and export requirements | Independent 2D coordinate plots; pure time series; paired phase trajectory and waveform; one-dimensional bifurcation and Lyapunov exponent comparison; categorical bifurcation slices |
+| Plot type | Input interpretation, plotting behavior, data checks, and export requirements | Independent 2D coordinate plots; pure time series; paired phase trajectory and waveform; one-dimensional bifurcation and Lyapunov exponent comparison; Slice Plots |
 | Placement | Target document context, physical dimensions, panel arrangement, margins, and spacing | Full width in a one-column document; one column in a two-column document; spanning both columns in a two-column document |
 
 For each task, select one plot type and one placement. The agent reads the corresponding reference from each dimension and applies both together with the common rules in [SKILL.md](scientific-plotting/SKILL.md). For example, the same time-series workflow can produce a full-width figure for a one-column article or a vertically stacked figure occupying one column of a two-column article.
@@ -32,11 +32,11 @@ The default placement is full width in a one-column document. Explicit user dime
 
 | Placement | Available presets |
 | --- | --- |
-| [One-column document, full width](scientific-plotting/references/placements/one-column-document-full-width.md) | Pure time series: 65 × 12 mm for one panel with one waveform; otherwise every frame is 65 × 15 mm. One vertical plot column by default, or two on request. Independent plots with a 65 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 65 × 30 mm upper box and 65 × 15 mm lower box per group: one group by default, or two groups side by side when requested. These workflows use a text-derived canvas. Four phase/waveform pairs with shared vertical axes within each pair on a 148 × 55 mm canvas; three slices on a 135 × 55.5 mm canvas, with additional rows and height calculated for larger slice layouts. |
-| [Two-column document, one column](scientific-plotting/references/placements/two-column-document-single-column.md) | Standard layout: 65 × 12 mm for one time-series panel with one waveform, or 65 × 15 mm per frame otherwise; one 65 × 45 mm independent plot; or one comparison group with 65 × 30 mm and 65 × 15 mm frames. Standard widths may fall back to 60 mm. On request, a compact 1×2 layout places two plots, two time-series panels, or two comparison groups side by side at 7 pt. Other plot types require explicit layout dimensions. |
-| [Two-column document, spanning both columns](scientific-plotting/references/placements/two-column-document-spanning.md) | Pure time series: 65 × 12 mm for one panel with one waveform; otherwise every frame is 65 × 15 mm. One vertical plot column by default, or two on request. Independent plots with a 65 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 65 × 30 mm upper box and 65 × 15 mm lower box per group: one group by default, or two groups side by side when requested. These workflows use a text-derived canvas. Other plot types require explicit layout dimensions. |
+| [One-column document, full width](scientific-plotting/references/placements/one-column-document-full-width.md) | Pure time series: 65 × 12 mm for one panel with one waveform; otherwise every frame is 65 × 15 mm. One vertical plot column by default, or two on request. Independent plots with a 65 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 65 × 30 mm upper box and 65 × 15 mm lower box per group: one group by default, or two groups side by side when requested. These workflows use a text-derived canvas. Four phase/waveform pairs with shared vertical axes within each pair on a 148 × 55 mm canvas. Slice Plots fit the fewest rows within the available full text width. |
+| [Two-column document, one column](scientific-plotting/references/placements/two-column-document-single-column.md) | Standard layout: 65 × 12 mm for one time-series panel with one waveform, or 65 × 15 mm per frame otherwise; one 65 × 45 mm independent plot; or one comparison group with 65 × 30 mm and 65 × 15 mm frames. Standard widths may fall back to 60 mm. On request, a compact 1×2 layout places two plots, two time-series panels, or two comparison groups side by side at 7 pt. Slice Plots allow up to three slices per row within 89 mm or the specified column width. Plot types without a preset require explicit layout dimensions. |
+| [Two-column document, spanning both columns](scientific-plotting/references/placements/two-column-document-spanning.md) | Pure time series: 65 × 12 mm for one panel with one waveform; otherwise every frame is 65 × 15 mm. One vertical plot column by default, or two on request. Independent plots with a 65 × 45 mm internal box each: one plot by default, or two side by side when requested. Bifurcation/Lyapunov comparisons with a 65 × 30 mm upper box and 65 × 15 mm lower box per group: one group by default, or two groups side by side when requested. These workflows use a text-derived canvas. Slice Plots fit the fewest rows within the available width across both columns. Plot types without a preset require explicit layout dimensions. |
 
-These presets are this skill's bundled defaults. Confirm any additional journal requirements and resolve missing dimensions before plotting. Slice layouts in either two-column placement require complete geometry, including the canvas, slices, spacing, margins, and colorbar.
+These presets are this skill's bundled defaults. Confirm any additional journal requirements and resolve missing dimensions before plotting.
 
 ### Frame Width and Column Fit
 
@@ -54,6 +54,8 @@ For independent plots, the internal box excludes tick text, axis labels, legends
 
 For bifurcation/Lyapunov comparisons, each group aligns the left and right edges of its upper and lower internal boxes. These boxes exclude external text and retain their configured heights and text size while the placement selects their width and the measured text determines vertical gaps, intergroup gaps, margins, and the canvas. Two requested groups align their corresponding boxes and retain independent ranges by default. Apply the selected placement's width policy and report unresolved conflicts without further resizing. For placements without a default threshold, report native canvas dimensions when no width limit is supplied rather than promising a fit.
 
+For Slice Plots, each slice defaults to 23 mm wide with 27 mm vertical edges and an 8 mm downward drop to the right. Its silhouette is 35 mm high before labels. All three placements default to 8 pt Times New Roman and fill each row from left to right in input order. Wider placements break ties between layouts with the same row count by choosing the fewest columns. Measured text and the shared colorbar determine spacing and the complete canvas. If the layout cannot fit, report its required and available widths while retaining the configured slice dimensions, labels, and font size.
+
 ### Compact Side-by-Side Layout Within One Column
 
 Request this layout explicitly for two independent 2D plots, two pure time-series panels, or two bifurcation/Lyapunov comparison groups within one column of a two-column article. Place them left to right in input order at native **7 pt Times New Roman**. Default inner heights are 22 mm for standalone frames (11 mm on request) and 22 mm above 11 mm for comparison groups.
@@ -69,7 +71,7 @@ Request this layout explicitly for two independent 2D plots, two pure time-serie
 | [One-Dimensional Bifurcation and Lyapunov Exponent Comparison](scientific-plotting/references/plot-types/bifurcation-lyapunov.md) | Workflow instructions for a task-specific MATLAB script with existing bifurcation samples above one or more confirmed exponent curves, conditional shared horizontal axes, and a visible zero reference line | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Pure time series](scientific-plotting/references/plot-types/pure-time-series.md) | Workflow instructions for a task-specific MATLAB script, including time windows, panel labels, and single or explicitly requested split vertical axes | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
 | [Paired phase trajectory and waveform](scientific-plotting/references/plot-types/phase-waveform.md) | Workflow instructions for a task-specific MATLAB script, with a phase trajectory on the left and a waveform on the right, independently configured time windows, and shared or independent vertical axes | Single-page vector PDF and a preview rendered from that PDF at 600 dpi or higher |
-| [Categorical bifurcation slices](scientific-plotting/references/plot-types/mat-bifurcation-slices.md) | A reusable MATLAB renderer and a synthetic demo for existing categorical MAT planes, including bifurcation maps and basins of attraction | Editable FIG and a 600 dpi PNG by default; an optional smaller PNG preview |
+| [Slice Plots](scientific-plotting/references/plot-types/slice-plots.md) | A reusable MATLAB renderer and a synthetic demo for existing discrete categorical planes, including bifurcation maps and basins of attraction | Editable FIG and a native 600 dpi PNG by default; an optional smaller PNG preview |
 
 Of the five plot types, the independent-plot, time-series, phase/waveform, and bifurcation/Lyapunov workflows guide the agent in writing a reproducible task-specific MATLAB script for the supplied data; they do not bundle general renderers. A one-panel count alone does not select the independent-plot route or change an existing specialized workflow's presets. A pure bifurcation scatter request remains an Independent 2D scenario; a request to compare it with Lyapunov exponents selects the dedicated comparison workflow. The bundled slice renderer supports FIG and PNG export.
 
@@ -77,9 +79,9 @@ The comparison workflow plots existing data without computing bifurcations or Ly
 
 Label the exponent axis `LLE` when drawing only the confirmed largest exponent, or `LEs` when drawing multiple exponents; do not infer that an arbitrary single series is the largest. Unless the user specifies a scale, choose a display multiplier only when it improves readability and append it to the label, such as `LEs, ×10^3`, with superscript typesetting. The tick values and multiplier must recover the original values, without changing source data or duplicating the multiplier elsewhere on the axis. Explicit user labels and scales take precedence.
 
-![Three synthetic categorical slices using the default one-column placement](scientific-plotting/assets/default-three-slice-preview.png)
+![Three synthetic slice plots within a column of a two-column document](scientific-plotting/assets/default-three-slice-preview.png)
 
-*The bundled preview shows three synthetic slices, explicitly selecting three colors from the SailRain palette. Its category names and colors illustrate the layout and have no universal scientific meaning.*
+*The bundled preview uses an 89 mm example column and three colors selected from the SailRain palette. The synthetic category names and colors illustrate the layout.*
 
 ## Shared Typography
 
@@ -146,6 +148,8 @@ Pure-time-series layout verification on 2026-10-21 used MATLAB R2025a, version 2
 Default-width and fallback verification on 2026-10-29 used MATLAB R2025a, version 25.1.0.2943329, with `print -dpdf -painters -r600` and sized vector `exportgraphics`. Nineteen accepted synthetic coordinate cases covered all three affected plot types in all three placements, 65 mm defaults, coordinated 60 mm fallbacks, the default 89 mm and an explicit 79 mm threshold, user widths, a height-only override, multiple panels, split y-axes, external annotations, and wide paired layouts. Six expected conflicts covered layouts still too wide at 60 mm, a locked explicit 65 mm width, and both wide placements retaining 65 mm without automatic fallback. Independent checks of 44 preliminary candidate PDFs verified width decisions against actual page sizes, including export rounding; source mappings, ranges, and ticks stayed unchanged across candidates. The 38 accepted vector PDFs preserved embedded Times New Roman, 8 pt main text, semantic italics, and actual U+2212; 66 measured frames had a maximum dimension error of approximately 0.088 mm. Subscript corrections and unchanged glyph positions matched independent native controls within 0.001 pt. Original coordinates and series order were verified against 86 vector series, and same-PDF 600 dpi PNGs were inspected for clipping and overlap. Zero-reference dashes remained approximately 0.8 mm with 0.5 mm gaps at both widths. These were synthetic layout checks without scientific simulation; older releases were not run.
 
 Compact side-by-side verification on 2026-11-11 used synthetic coordinates and MATLAB R2025a, version 25.1.0.2943329, with `print -dpdf -painters` and sized vector `exportgraphics`. The fixtures covered all three compact plot types, both width sequences, incompatible sharing, separate split y-axes, sharing only one comparison row, the 11 mm height, explicit width and threshold settings, and two intentional overflow conflicts. Twelve accepted layouts produced 24 vector PDFs with 52 frames, with a maximum frame dimension error below 0.076 mm. Actual PDF page widths were checked against the configured threshold. Checks covered embedded Times New Roman at 7 pt, mathematical minus signs, italic variables, the fixed 1 pt subscript correction, source coordinate preservation, and alignment. The 600 dpi PNGs were rendered from their respective PDFs and inspected for clipping and overlap. These checks do not certify older MATLAB releases.
+
+Slice Plot placement verification on 2026-11-17 used synthetic categorical grids in MATLAB R2025a, version 25.1.0.2943329. Both `print` and sized `exportgraphics` produced native 600 dpi PNGs and editable FIGs for three layouts. Six slices fit in two rows within an 89 mm column, eight slices fit in two balanced rows in a one-column document, and six slices fit in one row across both columns. Canvas widths were 88.94 mm, 114.53 mm, and 165.70 mm, respectively. The largest slice-dimension deviation measured from the exported PNGs was 0.061 mm. The checks covered sample-to-color mapping, colorbar centers, editable axis labels, and native-size placement in manuscript proofs. Additional regression cases exercised partial rows, measured label spacing, explicit geometry, and width conflicts.
 
 The renderer uses `ax.CLim` rather than the newer `clim` function name. It selects an export path that preserves the full physical canvas, including margins. The sizing and padding options used by [`exportgraphics`](https://www.mathworks.com/help/matlab/ref/exportgraphics.html) require R2025a or later; older releases use [`print`](https://www.mathworks.com/help/matlab/ref/print.html) instead. Explicit `export_backend = 'exportgraphics'` therefore requires R2025a or later. `export_backend = 'print'` is available for compatibility checks and manual selection on newer releases too.
 
@@ -358,14 +362,16 @@ are voltages in volts; use 1 to 2 s for both views and black curves.
 Write the reproducible script and final figures to results/phase/.
 ```
 
-**Categorical slices**
+**Slice Plots**
 
 ```text
 Use $scientific-plotting to render data/map_1.mat, data/map_2.mat, and
-data/map_3.mat as categorical slices, in that order, with the full-width
-placement for a one-column article. Use the coordinate vectors, matrix
-orientation, category definitions, and colors documented in data/metadata.txt.
-Write the adapter script, editable FIG, and 600 dpi PNG to results/slices/.
+data/map_3.mat as Slice Plots, in that order, within one 89 mm column of a
+two-column article. Use the coordinate vectors, matrix orientation, category
+definitions, and colors documented in data/metadata.txt. Share horizontal
+text by column if the horizontal axes have the same meaning, units, scale,
+display range, and ticks. Write the adapter script, editable FIG, and
+600 dpi PNG to results/slices/.
 ```
 
 Relative data and output paths in these requests refer to the research project. Keep source data, task-specific scripts, and generated figures outside the installed skill directory.
@@ -395,13 +401,13 @@ Set `skill_root` to the actual skill directory, then run:
 ```matlab
 skill_root = '/absolute/path/to/scientific-plotting-skill/scientific-plotting';
 addpath(fullfile(skill_root, 'scripts'), '-begin');
-which render_bifurcation_slices
+which render_slice_plots
 
 output_dir = tempname(tempdir);
 [fig, ax, cb] = demo_bifurcation_slices(3, output_dir);
 ```
 
-The demo creates three small synthetic MAT files, reloads them through an explicit field mapping, and renders three slices. The output directory contains:
+The demo creates three small synthetic MAT files, reloads them through an explicit field mapping, and renders three slices within an 89 mm example column. The output directory contains:
 
 - `synthetic_slice_01.mat`, `synthetic_slice_02.mat`, and `synthetic_slice_03.mat`.
 - `demo_3_slices.fig`, an editable MATLAB figure.
@@ -414,18 +420,21 @@ The demo loads the SailRain scheme and explicitly selects palette rows `[1, 2, 1
 
 These synthetic inputs demonstrate plotting and layout only. They are not simulation results, measurements, or evidence of dynamical behavior.
 
-## Slice Renderer Interface
+## Slice Plots MATLAB Interface
 
 After adapting your verified data to the required structures, call:
 
 ```matlab
-[fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
+[fig, ax, cb] = render_slice_plots(slices, categories, ...
+    'two-column-document-single-column', [], options);
 ```
 
 | Input | Required contents |
 | --- | --- |
 | `slices` | A nonempty struct vector. Each element has coordinate vectors `x` and `y`, plus a categorical matrix `S` with size `[numel(y), numel(x)]`. Optional fields are `title`, `source_file`, and a scalar `metadata` struct. |
 | `categories` | A scalar struct containing unique numeric `codes`, matching display `labels`, and an N × 3 RGB `colors` array with values in `[0, 1]`. Their order determines the shared colorbar order from bottom to top. |
+| `placement` | Placement file base name without `.md`. |
+| `available_width_mm` | Available width for the complete canvas. Pass `[]` to use 89 mm for `two-column-document-single-column`. Supply a width for the other two placements. |
 | `options` | An optional scalar struct for layout, axis labels, display ranges, typography, and export settings. Unknown option names are rejected. |
 
 Coordinates must already be in display units, finite, and strictly increasing, with at least two points per axis. **Rows of `S` correspond to `y`; columns correspond to `x`.** Different slices may use different grid sizes and nonuniform sampling. Every matrix entry must be finite and covered by `categories.codes`.
@@ -437,15 +446,16 @@ Frequently used options include:
 | Options | Purpose |
 | --- | --- |
 | `columns`, `slice_width_mm`, `slice_height_mm`, `slice_drop_mm` | Number of columns and slice geometry |
-| `slice_gap_mm`, `row_gap_mm`, `margins_mm` | Spacing and margins; margin order is `[left, bottom, right, top]` |
+| `slice_gap_mm`, `row_gap_mm`, `margins_mm` | Minimum spacing and margins for automatic placement. Margin order is `[left, bottom, right, top]`. |
 | `figure_mm`, `colorbar_mm` | Canvas `[width, height]` and colorbar `[left, bottom, width, height]`, in millimeters |
 | `x_limits`, `y_limits`, `x_ticks`, `y_ticks`, `x_label`, `y_label` | Coordinate display and labeling |
+| `x_text_mode` | `each-slice` (default). Use `bottom-per-column` for confirmed compatible horizontal axes. All slices retain their tick marks. |
 | `output_prefix`, `formats`, `resolution`, `preview_width_px` | Output path without an extension, FIG/PNG format selection, resolution, and optional preview width |
 | `export_backend` | `auto` (default), `exportgraphics`, or `print`; the selected PNG backend is recorded in `fig.UserData.export_backend` |
 
-An empty `output_prefix` creates a figure without writing files. With a nonempty prefix, the defaults export FIG and PNG at 600 dpi. The renderer's layout defaults implement the one-column-document placement; provide complete placement-specific geometry for either two-column context.
+An empty `output_prefix` creates a figure without writing files. With a nonempty prefix, the defaults export FIG and PNG at 600 dpi. Omit `columns` for automatic selection under the chosen placement. Existing scripts can also call `render_bifurcation_slices(slices, categories, options)` directly for manual layout with the same default slice dimensions.
 
-See the [slice workflow reference](scientific-plotting/references/plot-types/mat-bifurcation-slices.md) for MAT adaptation and detailed checks, and [the renderer](scientific-plotting/scripts/render_bifurcation_slices.m) for the complete `default_options` definition.
+See the [Slice Plots reference](scientific-plotting/references/plot-types/slice-plots.md) for MAT adaptation and detailed checks, and the [placement-aware renderer](scientific-plotting/scripts/render_slice_plots.m) for MATLAB help.
 
 ## Data Preservation and Verification
 
@@ -504,7 +514,11 @@ Tests require Times New Roman and write outputs to new temporary directories. Th
     └── scripts/
         ├── demo_bifurcation_slices.m
         ├── load_color_scheme.m
-        └── render_bifurcation_slices.m
+        ├── render_bifurcation_slices.m
+        ├── render_slice_plots.m
+        └── private/
+            ├── render_slice_plot_figure.m
+            └── space_slice_plot_panels.m
 ```
 
 ## License

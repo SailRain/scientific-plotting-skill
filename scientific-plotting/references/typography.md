@@ -55,7 +55,7 @@ Keep ordinary text such as `Run-1` or `file_name` literal. Create separate atoms
 - All four task-script PDF workflows use the compositor for mathematical labels, formulas, annotations, and legend text containing subscripts. Preserve hidden-axis text modes and shared-axis conditions; do not introduce a visible label where the workflow suppresses one.
 - A native legend does not expose a supported per-subscript baseline setting. For affected entries, construct editable line/marker samples and composed text, retaining the source series identities, ordering, colors, line styles, marker styles, token dimensions, and configured arrangement. Exclude these display objects from data-series counts and automatic legends.
 - Slice adapters use optional `options.text_layouts` to declare structured x/y labels, panel labels, slice titles, and category labels. Unspecified entries retain the existing string behavior. The adapter must provide layouts for mathematical subscripts requiring this correction; the renderer does not infer their meaning from arbitrary strings.
-- For structured category labels, hide only their corresponding native colorbar text and draw the replacement at the same category centers. Keep original display aliases and category codes in metadata, preserve the category/color mapping, and use actual composed bounds in space checks. See the [slice interface](plot-types/mat-bifurcation-slices.md) for configuration fields.
+- For structured category labels, hide only their corresponding native colorbar text and draw the replacement at the same category centers. Keep original display aliases and category codes in metadata, preserve the category/color mapping, and use actual composed bounds in space checks. See the [slice interface](plot-types/slice-plots.md) for configuration fields.
 - Reopening the FIG must retain editable text parts and their declared semantic roles. The helper and display configuration do not modify numerical data, axis limits, tick positions, classification cells, or placement presets.
 
 ## Task-Specific MATLAB Scripts
@@ -80,7 +80,7 @@ text(ax, 0.05, 0.9, ['Offset = ' minus_sign '0.5'], ...
 
 Use Times New Roman and the selected placement's main-text size for the axis and text objects, with explicit user overrides taking precedence. The common default is 8 pt; the compact side-by-side layout within one column defaults to 7 pt. This example is not a global axes formatter; adapt it to the confirmed precision, scaling, and visibility of each ruler.
 
-## Categorical Slice Renderer and Adapters
+## Slice Plots and Adapters
 
 - The [slice renderer](../scripts/render_bifurcation_slices.m) formats its own manual x/y numeric ticks with `%g` and replaces ASCII minus signs in those generated strings with U+2212. This also covers the negative exponent in a `%g` result such as `1e−06`. The numeric inputs and category mapping are unchanged.
 - Axis labels, slice titles, panel labels, and category labels can contain arbitrary text. The renderer preserves those caller-provided strings. Prepare their mathematical fragments in the task adapter using U+2212, including numeric code aliases when their meaning has been confirmed. Do not guess whether an unmarked string such as `x-y` is a formula or a name.

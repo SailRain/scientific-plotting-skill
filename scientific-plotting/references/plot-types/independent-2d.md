@@ -21,7 +21,7 @@ Read this file when the user requests an independent two-dimensional coordinate 
 
 ### High-Density Bifurcation Scatter Plots
 
-Use this scenario for existing paired parameter values and retained state samples displayed as a dense point cloud. These are coordinate samples, not the discrete category cells or sheared planes handled by the MAT classification-slice workflow. The following is a starting combination for this scenario only; it does not set marker defaults for other independent curves or scatter plots. Explicit user styles take precedence.
+Use this scenario for existing paired parameter values and retained state samples displayed as a dense point cloud. These are coordinate samples, not the discrete category cells or sheared planes handled by the [Slice Plots workflow](slice-plots.md). The following is a starting combination for this scenario only; it does not set marker defaults for other independent curves or scatter plots. Explicit user styles take precedence.
 
 ```matlab
 plot(ax, xValues, yValues, ...

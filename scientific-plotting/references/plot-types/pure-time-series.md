@@ -44,7 +44,7 @@ The nonspanning compact 1×2 layout keeps both time axes fully labeled. For othe
 
 ## 5. Panel Labels
 
-- Preserve the panel-label text mapping specified by the user or confirmed in the current conversation; do not generate labels automatically from filenames or adopt the automatic `(a)`, `(b)` rules for MAT slices. If the task requires panel labels but their mapping cannot be verified, confirm it first.
+- Preserve the panel-label text mapping specified by the user or confirmed in the current conversation; do not generate labels automatically from filenames or adopt the automatic `(a)`, `(b)` rules for Slice Plots. If the task requires panel labels but their mapping cannot be verified, confirm it first.
 - By default, place panel labels inside the lower-right corner of the plot box at approximately `(0.985, 0.055)` in normalized coordinates, right-aligned and bottom-aligned. If a label obscures a curve, first try the upper-right corner at `(0.985, 0.955)` with top alignment, then fine-tune its position based on the actual empty area.
 - Panel labels must not be clipped. Do not add background fills or borders, and do not expand axis ranges to accommodate labels.
 

@@ -1,5 +1,5 @@
 function tests = test_bifurcation_slices
-%TEST_BIFURCATION_SLICES Check data fidelity, export backends, and demo paths.
+%TEST_BIFURCATION_SLICES Check physical layouts, data fidelity, and exports.
 %   Run with runtests(fullfile(repo_root, 'tests')). Outputs are written to
 %   a new temporary directory, whose path is printed for visual inspection.
 tests = functiontests(localfunctions);
@@ -84,6 +84,164 @@ verify_data(testCase, fig, ax, cb, slices, categories);
 verifyFalse(testCase, isfield(fig.UserData, 'export_backend'));
 after = dir(testCase.TestData.output_dir);
 verifyEqual(testCase, {after.name}, {before.name});
+end
+
+function testSlicePlotDefaultsAndSharedText(testCase)
+[slices, categories, options] = fixture(5);
+categories.labels = {'A', 'B', 'C', 'D'};
+options.columns = 3;
+[fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
+cleanup = onCleanup(@() close(fig));
+verifyEqual(testCase, fig.Name, 'Slice Plots');
+verify_slice_geometry(testCase, fig, ax, [23, 27, 8]);
+verify_axis_text(testCase, ax, 1:5, [1, 4], numel(options.x_ticks));
+verify_data(testCase, fig, ax, cb, slices, categories);
+clear cleanup;
+
+options.x_text_mode = 'bottom-per-column';
+[fig, ax, cb] = render_slice_plots(slices, categories, ...
+    'two-column-document-single-column', [], options);
+cleanup = onCleanup(@() close(fig));
+verify_axis_text(testCase, ax, 3:5, [1, 4], numel(options.x_ticks));
+verify_data(testCase, fig, ax, cb, slices, categories);
+verifyLessThanOrEqual(testCase, fig.UserData.layout.figure_mm(1), 89);
+
+options.x_text_mode = 'unsupported';
+verifyError(testCase, @() render_bifurcation_slices(slices, categories, options), ...
+    'BifurcationSlices:InvalidXTextMode');
+end
+
+function testManuscriptLayouts(testCase)
+[slices, categories, options] = fixture(8);
+categories.labels = {'A', 'B', 'C', 'D'};
+for k = 1:numel(slices)
+    slices(k).x = -4 + 9 * slices(k).x;
+    slices(k).y = -7.5 + 15 * (slices(k).y - 10) / 40;
+end
+options.x_limits = [-4, 5];
+options.y_limits = [-7.5, 7.5];
+options.x_ticks = [-4, 0, 5];
+options.y_ticks = [-6, 0, 6];
+options.x_label = 'x_1';
+options.y_label = 'x_2';
+options.text_layouts = struct('x_label', scientific_atom('x', '1', '', 'italic'), ...
+    'y_label', scientific_atom('x', '2', '', 'italic'));
+options.x_text_mode = 'bottom-per-column';
+cases = {
+    'two-column-document-single-column', 89, 6, 3;
+    'one-column-document-full-width', 184, 8, 4;
+    'two-column-document-spanning', 184, 6, 6
+};
+for k = 1:size(cases, 1)
+    [placement, width, count, columns] = deal(cases{k, :});
+    [fig, ax, cb] = render_slice_plots(slices(1:count), categories, placement, width, options);
+    cleanup = onCleanup(@() close(fig));
+    verifyLessThanOrEqual(testCase, fig.UserData.layout.figure_mm(1), width);
+    verify_arrangement(testCase, fig, count, columns);
+    verify_slice_geometry(testCase, fig, ax, [23, 27, 8]);
+    verify_axis_text(testCase, ax, count-columns+1:count, 1:columns:count, numel(options.x_ticks));
+    verify_data(testCase, fig, ax, cb, slices(1:count), categories);
+    clear cleanup;
+end
+end
+
+function testMeasuredWidthFallbackAndConflicts(testCase)
+[slices, categories, options] = fixture(6);
+categories.labels = {'A', 'B', 'C', 'D'};
+placement = 'two-column-document-single-column';
+options.x_text_mode = 'bottom-per-column';
+[fig, ~, ~] = render_slice_plots(slices, categories, placement, [], options);
+cleanup = onCleanup(@() close(fig));
+verify_arrangement(testCase, fig, 6, 3);
+short_width = fig.UserData.layout.figure_mm(1);
+clear cleanup;
+
+categories.labels{end} = 'Alternating responses';
+options.columns = 3;
+[fig, ~, ~] = render_slice_plots(slices, categories, placement, 130, options);
+cleanup = onCleanup(@() close(fig));
+long_width = fig.UserData.layout.figure_mm(1);
+verifyGreaterThan(testCase, long_width, short_width);
+clear cleanup;
+
+available_width = (short_width + long_width) / 2;
+verifyError(testCase, @() render_slice_plots(slices, categories, placement, available_width, options), ...
+    'SlicePlots:TooWide');
+options = rmfield(options, 'columns');
+[fig, ax, cb] = render_slice_plots(slices, categories, placement, available_width, options);
+cleanup = onCleanup(@() close(fig));
+verify_arrangement(testCase, fig, 6, 2);
+verifyLessThanOrEqual(testCase, fig.UserData.layout.figure_mm(1), available_width);
+verify_slice_geometry(testCase, fig, ax, [23, 27, 8]);
+verify_data(testCase, fig, ax, cb, slices, categories);
+
+verifyError(testCase, @() render_slice_plots(slices, categories, placement, 20, options), ...
+    'SlicePlots:TooWide');
+verifyError(testCase, @() render_slice_plots(slices, categories, ...
+    'two-column-document-spanning', [], options), 'SlicePlots:MissingAvailableWidth');
+verifyError(testCase, @() render_slice_plots(slices, categories, ...
+    'one-column-document-full-width', [], options), 'SlicePlots:MissingAvailableWidth');
+options.columns = 4;
+verifyError(testCase, @() render_slice_plots(slices, categories, placement, 160, options), ...
+    'SlicePlots:TooManyColumns');
+options.columns = 1;
+options.x_ticks = linspace(0, 1, 20);
+verifyError(testCase, @() render_slice_plots(slices(1), categories, placement, 89, options), ...
+    'SlicePlots:OverlappingTicks');
+end
+
+function testExplicitSliceGeometryBothBackends(testCase)
+[slices, categories, options] = fixture(2);
+options.columns = 2;
+options.slice_width_mm = 25;
+options.slice_height_mm = 18;
+options.slice_drop_mm = 5;
+backends = {'print', 'exportgraphics'};
+for k = 1:numel(backends)
+    backend = backends{k};
+    if strcmp(backend, 'exportgraphics') && verLessThan('matlab', '25.1')
+        continue;
+    end
+    options.export_backend = backend;
+    options.output_prefix = fullfile(testCase.TestData.output_dir, ['placed_', backend]);
+    [fig, ax, cb] = render_slice_plots(slices, categories, ...
+        'two-column-document-spanning', 110, options);
+    cleanup = onCleanup(@() close(fig));
+    verify_arrangement(testCase, fig, 2, 2);
+    verify_slice_geometry(testCase, fig, ax, [25, 18, 5]);
+    verify_axis_text(testCase, ax, 1:2, 1, numel(options.x_ticks));
+    verify_data(testCase, fig, ax, cb, slices, categories);
+    verifyEqual(testCase, fig.UserData.export_backend, backend);
+    verify_png(testCase, [options.output_prefix, '.png'], fig.UserData.layout, 600);
+    verify_raster_cells(testCase, [options.output_prefix, '.png'], fig, slices, categories);
+    reopened = openfig([options.output_prefix, '.fig'], 'invisible');
+    reopen_cleanup = onCleanup(@() close(reopened));
+    reopened_ax = findall(reopened, 'Type', 'axes');
+    reopened_cb = findall(reopened, 'Type', 'colorbar');
+    verify_data(testCase, reopened, reopened_ax, reopened_cb, slices, categories);
+    verify_slice_geometry(testCase, reopened, reopened_ax, [25, 18, 5]);
+    label = findobj(reopened_ax, 'Tag', 'x_label_2');
+    label.String = 'Editable axis label';
+    verifyEqual(testCase, label.String, 'Editable axis label');
+    clear reopen_cleanup cleanup;
+end
+end
+
+function testMeasuredAxisLabelOffset(testCase)
+[slices, categories, options] = fixture(1);
+slices.y = -100000 + 100000 * (slices.y - 10) / 40;
+options.y_limits = [-100000, 0];
+options.y_ticks = [-100000, -50000, 0];
+[fig, ax, cb] = render_slice_plots(slices, categories, ...
+    'two-column-document-single-column', [], options);
+cleanup = onCleanup(@() close(fig));
+layout = fig.UserData.layout;
+verifyGreaterThan(testCase, layout.y_label_offset_mm, 5.7);
+verifyLessThanOrEqual(testCase, layout.figure_mm(1), 89);
+verify_data(testCase, fig, ax, cb, slices, categories);
+label = findobj(ax, 'Tag', 'y_label_1');
+center_tick = findobj(ax, 'Tag', 'y_tick_1', 'String', [char(8722), '50000']);
+verifyLessThan(testCase, label.Extent(1) + label.Extent(3), center_tick.Extent(1));
 end
 
 function testFigOnlyAndPreviewOnly(testCase)
@@ -415,12 +573,52 @@ end
 
 function testDemoExplicitDirectory(testCase)
 output_dir = fullfile(testCase.TestData.output_dir, 'explicit_demo');
-[fig, ~, ~] = demo_bifurcation_slices(3, output_dir);
+[fig, ax, ~] = demo_bifurcation_slices(3, output_dir);
 cleanup = onCleanup(@() close(fig)); %#ok<NASGU>
 verifyEqual(testCase, fileparts(fig.UserData.source_files{1}), output_dir);
 verifyEqual(testCase, numel(dir(fullfile(output_dir, 'synthetic_slice_*.mat'))), 3);
 verifyTrue(testCase, isfile(fullfile(output_dir, 'demo_3_slices.fig')));
 verifyTrue(testCase, isfile(fullfile(output_dir, 'demo_3_slices.png')));
+verify_slice_geometry(testCase, fig, ax, [23, 27, 8]);
+verifyLessThanOrEqual(testCase, fig.UserData.layout.figure_mm(1), 89);
+end
+
+function verify_arrangement(testCase, fig, count, columns)
+origins = fig.UserData.origins_mm;
+verifyEqual(testCase, size(origins), [count, 2]);
+verifyEqual(testCase, numel(unique(origins(:, 1))), columns);
+verifyEqual(testCase, numel(unique(origins(:, 2))), ceil(count / columns));
+for first = 1:columns:count
+    indices = first:min(first + columns - 1, count);
+    verifyTrue(testCase, all(diff(origins(indices, 1)) > 0));
+    verifyEqual(testCase, origins(indices, 2), repmat(origins(first, 2), numel(indices), 1));
+end
+verifyTrue(testCase, all(diff(origins(1:columns:end, 2)) < 0));
+end
+
+function verify_slice_geometry(testCase, fig, ax, expected)
+for index = 1:size(fig.UserData.origins_mm, 1)
+    border = findobj(ax, 'Tag', sprintf('slice_border_%d', index));
+    width = border.XData(2) - border.XData(1);
+    height = border.YData(4) - border.YData(1);
+    drop = border.YData(1) - border.YData(2);
+    verifyEqual(testCase, [width, height, drop], expected, 'AbsTol', 0.1);
+end
+verifyEqual(testCase, ax.FontName, 'Times New Roman');
+verifyEqual(testCase, ax.FontSize, 8);
+end
+
+function verify_axis_text(testCase, ax, x_indices, y_indices, tick_count)
+x_labels = findobj(ax, '-regexp', 'Tag', '^x_label_[0-9]+$');
+y_labels = findobj(ax, '-regexp', 'Tag', '^y_label_[0-9]+$');
+verifyEqual(testCase, sort(string({x_labels.Tag})), sort(compose("x_label_%d", x_indices)));
+verifyEqual(testCase, sort(string({y_labels.Tag})), sort(compose("y_label_%d", y_indices)));
+for k = 1:numel(findobj(ax, 'Type', 'surface'))
+    tick_text = findobj(ax, 'Tag', sprintf('x_tick_%d', k));
+    tick_marks = findobj(ax, 'Type', 'line', 'Tag', sprintf('x_tick_mark_%d', k));
+    verifyEqual(testCase, numel(tick_text), tick_count * ismember(k, x_indices));
+    verifyEqual(testCase, numel(tick_marks), tick_count);
+end
 end
 
 function [slices, categories, options] = fixture(count)

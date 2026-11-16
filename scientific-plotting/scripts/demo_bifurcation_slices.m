@@ -1,7 +1,8 @@
 function [fig, ax, cb] = demo_bifurcation_slices(slice_count, output_dir)
 %DEMO_BIFURCATION_SLICES Demonstrate MAT adaptation and flexible slice layouts.
 %   DEMO_BIFURCATION_SLICES() draws five synthetic category slices.
-%   DEMO_BIFURCATION_SLICES(N) draws N slices in at most three columns.
+%   DEMO_BIFURCATION_SLICES(N) fits N slices to an 89 mm column in a
+%   two-column document, with at most three slices per row.
 %   DEMO_BIFURCATION_SLICES(N, OUTPUT_DIR) selects the output folder.
 %   The default output folder is a new unique directory under TEMPDIR,
 %   independent of the current working directory. Its path is printed.
@@ -19,17 +20,18 @@ if nargin < 2 || isempty(output_dir)
     output_dir = tempname(tempdir);
 end
 categories.codes = [-4, 7, 42];
-categories.labels = {'Zone A', 'Zone B', 'Zone C'};
+categories.labels = {'A', 'B', 'C'};
 scheme = load_color_scheme();
 % Explicit demo choices preserve the gray, cyan, and magenta appearance.
 categories.colors = scheme.categorical_colors([1, 2, 12], :);
-options.columns = min(3, slice_count);
 options.x_limits = [0, 1];
 options.y_limits = [10, 50];
 options.x_ticks = [0, 0.5, 1];
 options.y_ticks = [10, 30, 50];
 options.x_label = 'x, a.u.';
 options.y_label = 'y, a.u.';
+% The slices use the same x quantity, units, scale, limits, and ticks.
+options.x_text_mode = 'bottom-per-column';
 options.font_name = 'Times New Roman';
 options.font_size_pt = 8;
 options.output_prefix = fullfile(output_dir, sprintf('demo_%d_slices', slice_count));
@@ -66,7 +68,8 @@ for k = 1:slice_count
     slices(k).metadata = saved.example_metadata;
 end
 
-[fig, ax, cb] = render_bifurcation_slices(slices, categories, options);
+[fig, ax, cb] = render_slice_plots(slices, categories, ...
+    'two-column-document-single-column', 89, options);
 fprintf('Synthetic layout example: %d slices; no simulation was performed.\n', slice_count);
 fprintf('Example MAT files and exported figures: %s\n', output_dir);
 end

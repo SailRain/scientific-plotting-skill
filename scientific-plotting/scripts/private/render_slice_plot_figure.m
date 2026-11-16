@@ -1,0 +1,885 @@
+function [fig, ax, cb] = render_slice_plot_figure(slices, categories, given_options, constraints)
+%RENDER_SLICE_PLOT_FIGURE Shared drawing and export implementation.
+%   SLICES is a struct vector with x, y, S, and optional title, source_file,
+%   metadata. Coordinates are already in display units; S rows represent y.
+%   CATEGORIES contains equally ordered codes, labels, and RGB colors.
+%   OPTIONS is an optional scalar struct; see default_options below for all
+%   settings. Unknown settings are rejected to catch misspelled options.
+%   An empty output_prefix opens a figure without writing files. A nonempty
+%   prefix exports the requested formats. MATLAB R2020a or later is the
+%   compatibility target. PNG export uses sized exportgraphics on R2025a or
+%   later and print with explicit paper dimensions on earlier releases.
+%   OPTIONS.export_backend can be auto (default), exportgraphics, or print.
+%   The selected PNG backend is recorded in FIG.UserData.export_backend.
+%   Optional OPTIONS.text_layouts explicitly supplies scientific text atoms
+%   for labels; existing string interpreter behavior is preserved without
+%   guessing structured subscripts. See the plot-type reference for details.
+%   No classification or simulation is run.
+
+options = merge_options(given_options);
+[slices, categories] = validate_inputs(slices, categories);
+count = numel(slices);
+category_count = numel(categories.codes);
+if ~isempty(constraints)
+    options = fit_layout(slices, categories, options, given_options, constraints);
+end
+options = resolve_layout(slices, category_count, options);
+validate_options(options, count, category_count);
+
+fig = new_figure(options);
+try
+    % GraphicsSmoothing has no effect in the R2025a graphics system.
+    if verLessThan('matlab', '25.1')
+        fig.GraphicsSmoothing = 'off';
+    end
+    ax = drawing_axes(fig, options);
+    colormap(ax, categories.colors);
+    ax.CLim = [0.5, category_count + 0.5];
+
+    origins = panel_origins(count, options);
+    for k = 1:count
+        origin = origins(k, :);
+        [gx, gy] = meshgrid(sample_edges(slices(k).x), sample_edges(slices(k).y));
+        [px, py] = coordinates(gx, gy, origin, options);
+        [~, indices] = ismember(slices(k).S, categories.codes);
+        % Every original sample owns one flat face. Only the unused last
+        % vertex row/column is padded, so no boundary sample is discarded.
+        colors = indices([1:end, end], [1:end, end]);
+        h = surface(ax, px, py, zeros(size(px)), colors, ...
+            'CDataMapping', 'scaled', 'FaceColor', 'flat', 'EdgeColor', 'none', ...
+            'FaceLighting', 'none', 'Tag', sprintf('bifurcation_slice_%d', k));
+        provenance = slices(k).metadata;
+        provenance.source_file = slices(k).source_file;
+        provenance.sample_size = size(indices);
+        provenance.category_codes = categories.codes;
+        h.UserData = provenance;
+        draw_labels(ax, origin, k, count, slices(k).title, options);
+    end
+
+    cb = colorbar(ax, 'Location', 'eastoutside', 'Ticks', 1:category_count, ...
+        'TickLabels', categories.labels, 'TickLabelInterpreter', 'none', ...
+        'FontName', options.font_name, 'FontSize', options.font_size_pt, ...
+        'TickLength', 0, 'Color', 'k', 'LineWidth', options.line_width_pt, 'Box', 'on');
+    cb.Direction = 'normal';
+    cb.Units = 'normalized';
+    cb.Position = options.colorbar_mm ./ options.figure_mm([1, 2, 1, 2]);
+    ax.Position = [0, 0, 1, 1];
+    % Manual positions can trigger automatic labels on the inner side in
+    % tall layouts. Pin the labels to the outer/right side of this bar.
+    cb.AxisLocation = 'out';
+    draw_category_labels(ax, cb, categories, options);
+    fig.UserData = struct('layout', options, 'origins_mm', origins, ...
+        'category_codes', categories.codes, 'category_labels', {categories.labels}, ...
+        'source_files', {{slices.source_file}});
+    drawnow;
+    check_text_bounds(ax, cb, categories.labels, options);
+    assert(isequal(cb.Limits, [0.5, category_count + 0.5]), ...
+        'BifurcationSlices:ColorbarAlignment', 'Colorbar limits do not match the display bins.');
+    assert(strcmp(cb.AxisLocation, 'out') && strcmp(cb.AxisLocationMode, 'manual'), ...
+        'BifurcationSlices:ColorbarSide', 'Colorbar labels must stay on the outer side.');
+    fig.Visible = options.visible;
+    export_outputs(fig, options);
+    fprintf('Rendered %d slices and %d category samples without interpolation.\n', ...
+        count, sum(arrayfun(@(s) numel(s.S), slices)));
+catch exception
+    if isgraphics(fig)
+        close(fig);
+    end
+    rethrow(exception);
+end
+end
+
+function fig = new_figure(options)
+fig = figure('Visible', 'off', 'Color', 'w', 'Name', options.figure_name, ...
+    'NumberTitle', 'off', 'Units', 'centimeters', ...
+    'Position', [2, 2, options.figure_mm / 10], ...
+    'InvertHardcopy', 'off', 'DefaultAxesFontName', options.font_name, ...
+    'DefaultAxesFontSize', options.font_size_pt, ...
+    'DefaultTextFontName', options.font_name, ...
+    'DefaultTextFontSize', options.font_size_pt);
+end
+
+function ax = drawing_axes(fig, options)
+ax = axes('Parent', fig, 'Units', 'normalized', 'Position', [0, 0, 1, 1], ...
+    'XLim', [0, options.figure_mm(1)], 'YLim', [0, options.figure_mm(2)], ...
+    'ZLim', [-1, 1], 'YDir', 'normal', 'Visible', 'off', ...
+    'FontName', options.font_name, 'FontSize', options.font_size_pt, ...
+    'LabelFontSizeMultiplier', 1, 'TitleFontSizeMultiplier', 1, ...
+    'DataAspectRatio', [1, 1, 1], 'SortMethod', 'childorder');
+ax.Toolbar.Visible = 'off';
+disableDefaultInteractivity(ax);
+hold(ax, 'on');
+view(ax, 2);
+end
+
+function origins = panel_origins(count, options)
+index = (0:count-1).';
+rows = ceil(count / options.columns);
+height = options.slice_height_mm + options.slice_drop_mm;
+row_pitch = height + options.row_gap_mm;
+content_height = rows * height + (rows - 1) * options.row_gap_mm + sum(options.margins_mm([2, 4]));
+origins = [options.margins_mm(1) + mod(index, options.columns) * ...
+    (options.slice_width_mm + options.slice_gap_mm), ...
+    options.margins_mm(2) + options.slice_drop_mm + ...
+    (rows - floor(index / options.columns) - 1) * row_pitch + ...
+    (options.figure_mm(2) - content_height) / 2];
+end
+
+function fitted = fit_layout(slices, categories, options, given, constraints)
+count = numel(slices);
+category_count = numel(categories.codes);
+limit = constraints.available_width_mm;
+starting_points = struct('slice_gap_mm', 2, 'row_gap_mm', 4, ...
+    'margins_mm', [0, 0, 0, 0], 'y_label_offset_mm', 5.7, ...
+    'x_tick_offset_mm', 0.8, 'y_tick_offset_mm', 0.9, 'tick_length_mm', 0.5);
+for name = fieldnames(starting_points).'
+    if ~isfield(given, name{1})
+        options.(name{1}) = starting_points.(name{1});
+    end
+end
+fixed_canvas = options.figure_mm;
+fixed_bar = options.colorbar_mm;
+if ~isempty(fixed_canvas)
+    validateattributes(fixed_canvas, {'numeric'}, {'real', 'finite', 'positive', 'size', [1, 2]});
+end
+if ~isempty(fixed_bar)
+    validateattributes(fixed_bar, {'numeric'}, {'real', 'finite', 'size', [1, 4]});
+    assert(all(fixed_bar(1:2) >= 0) && all(fixed_bar(3:4) > 0), ...
+        'BifurcationSlices:ColorbarOutsideFigure', 'Colorbar geometry must be positive and within the figure.');
+end
+if ~isempty(options.columns)
+    validateattributes(options.columns, {'numeric'}, {'scalar', 'integer', 'positive', 'finite'});
+    assert(~constraints.is_nonspanning || options.columns <= 3, 'SlicePlots:TooManyColumns', ...
+        'The nonspanning two-column placement allows at most three slices per row.');
+end
+
+% Resolve axis fields and validate text before creating measurement graphics.
+probe = options;
+probe.columns = 1;
+probe.figure_mm = [];
+probe.colorbar_mm = [];
+validateattributes(probe.margins_mm, {'numeric'}, ...
+    {'real', 'finite', 'size', [1, 4], 'nonnegative'});
+probe.margins_mm(3) = max(probe.margins_mm(3), 5);
+probe = resolve_layout(slices, category_count, probe);
+validate_options(probe, count, category_count);
+for name = {'x_limits', 'y_limits', 'x_ticks', 'y_ticks', 'panel_labels'}
+    options.(name{1}) = probe.(name{1});
+end
+if ~isempty(options.columns)
+    candidates = min(options.columns, count);
+elseif constraints.is_nonspanning
+    candidates = min(3, count):-1:1;
+else
+    % A candidate cannot fit if its bare frames already exceed the limit.
+    candidates = 1:min(count, max(1, floor(limit / options.slice_width_mm)));
+    [~, order] = sortrows([ceil(count ./ candidates(:)), candidates(:)], [1, 2]);
+    candidates = candidates(order);
+end
+
+probe.figure_mm = max([80, 75], [options.slice_width_mm, ...
+    options.slice_height_mm + options.slice_drop_mm] + 40);
+fig = new_figure(probe);
+cleanup = onCleanup(@() close(fig));
+ax = drawing_axes(fig, probe);
+origin = [20, 20 + options.slice_drop_mm];
+padding = 0.45;
+bar_gap = 1.5;
+bar_width = 1.4;
+[label_width, label_height] = category_label_extent(ax, categories.labels, origin, probe);
+label_pitch = max(probe.font_size_pt * 25.4 / 72, label_height + 0.4);
+bar_height = max(18, category_count * label_pitch);
+if ~isempty(fixed_bar)
+    assert(fixed_bar(4) / category_count >= label_pitch, ...
+        'BifurcationSlices:ColorbarTooShort', 'The fixed colorbar needs more height for its category labels.');
+end
+options = separate_axis_labels(ax, slices(1).title, origin, options, given);
+probe.x_label_offset_mm = options.x_label_offset_mm;
+probe.y_label_offset_mm = options.y_label_offset_mm;
+
+required_width = Inf;
+canvas_conflict = false;
+for columns = candidates
+    candidate = options;
+    candidate.columns = columns;
+    probe.columns = columns;
+    panels = measure_panels(ax, slices, origin, probe);
+    [candidate, bounds] = space_slice_plot_panels(panels, candidate);
+    body_width = columns * candidate.slice_width_mm + (columns - 1) * candidate.slice_gap_mm;
+    rows = ceil(count / columns);
+    body_height = rows * (candidate.slice_height_mm + candidate.slice_drop_mm) + ...
+        (rows - 1) * candidate.row_gap_mm;
+    margins = max(candidate.margins_mm, padding + [-bounds(1:2), ...
+        bounds(3:4) - [body_width, body_height]]);
+    plot_right = margins(1) + bounds(3);
+    bar_left = max(margins(1) + body_width + bar_gap, plot_right + padding);
+    bar_right = bar_left + bar_width;
+    minimum_height = max(margins(2) + body_height + margins(4), bar_height + 2 * padding);
+    if ~isempty(fixed_bar)
+        if fixed_bar(1) < plot_right + padding
+            canvas_conflict = true;
+            continue;
+        end
+        bar_right = fixed_bar(1) + fixed_bar(3);
+        minimum_height = max(margins(2) + body_height + margins(4), ...
+            fixed_bar(2) + fixed_bar(4) + padding);
+    end
+    minimum_width = max(margins(1) + body_width + margins(3), ...
+        bar_right + 1 + label_width + padding);
+    canvas = [minimum_width, minimum_height];
+    if ~isempty(fixed_canvas)
+        if any(fixed_canvas + 1e-8 < canvas)
+            canvas_conflict = true;
+            continue;
+        end
+        canvas = fixed_canvas;
+    end
+    required_width = min(required_width, canvas(1));
+    if canvas(1) > limit + 1e-8
+        continue;
+    end
+    candidate.figure_mm = canvas;
+    candidate.margins_mm = margins;
+    candidate.margins_mm(3) = max(margins(3), minimum_width - margins(1) - body_width);
+    candidate.colorbar_mm = fixed_bar;
+    if isempty(fixed_bar)
+        candidate.colorbar_mm = [bar_left, (canvas(2) - bar_height) / 2, bar_width, bar_height];
+    end
+    fitted = candidate;
+    return;
+end
+if isinf(required_width) && canvas_conflict
+    error('SlicePlots:FixedGeometryConflict', ...
+        'No allowed arrangement fits the specified canvas or colorbar geometry and its labels.');
+end
+error('SlicePlots:TooWide', 'The figure needs at least %.2f mm of width; %.2f mm is available.', ...
+    required_width, limit);
+end
+
+function options = separate_axis_labels(ax, title, origin, options, given)
+% Long numeric labels may need more room on the axis itself before rows
+% and columns can be fitted. Measure the editable labels in drawing units.
+sample = options;
+sample.columns = 1;
+angle = atan2d(options.slice_drop_mm, options.slice_width_mm);
+draw_labels(ax, origin, 1, 1, title, sample);
+drawnow;
+normals = [sind(angle), cosd(angle); 1, 0];
+offset_projection = [cosd(angle), 1];
+axis_names = {'x', 'y'};
+for k = 1:2
+    field = [axis_names{k}, '_label_offset_mm'];
+    normal = normals(k, :).';
+    tangent = [normal(2); -normal(1)];
+    ticks = tagged_text_polygons(ax, [axis_names{k}, '_tick_1']);
+    spans = zeros(numel(ticks), 2);
+    for j = 1:numel(ticks)
+        along = ticks{j} * tangent;
+        spans(j, :) = [min(along), max(along)];
+    end
+    spans = sortrows(spans, 1);
+    assert(~any(spans(1:end-1, 2) > spans(2:end, 1) + 0.01), ...
+        'SlicePlots:OverlappingTicks', ...
+        'The %s tick labels overlap on the configured slice. Specify fewer ticks or a different slice size.', axis_names{k});
+    if isfield(given, field)
+        continue;
+    end
+    labels = tagged_text_polygons(ax, [axis_names{k}, '_label_1']);
+    needed = 0;
+    for label = labels
+        label_along = label{1} * tangent;
+        for tick = ticks
+            tick_along = tick{1} * tangent;
+            if max(label_along) > min(tick_along) && max(tick_along) > min(label_along)
+                needed = max(needed, max(label{1} * normal) + 0.25 - min(tick{1} * normal));
+            end
+        end
+    end
+    options.(field) = options.(field) + needed / offset_projection(k);
+end
+delete(ax.Children);
+end
+
+function polygons = tagged_text_polygons(ax, tag)
+polygons = {};
+for object = findall(ax, 'Tag', tag).'
+    for item = findall(object, 'Type', 'text').'
+        if ~isempty(item.String)
+            polygons{end+1} = text_polygon(item); %#ok<AGROW>
+        end
+    end
+end
+end
+
+function panels = measure_panels(ax, slices, origin, options)
+count = numel(slices);
+panels = cell(1, count);
+for k = 1:count
+    draw_labels(ax, origin, k, count, slices(k).title, options);
+    drawnow;
+    w = options.slice_width_mm;
+    h = options.slice_height_mm;
+    d = options.slice_drop_mm;
+    shapes = {[0, 0; w, -d; w, h-d; 0, h]};
+    for item = findall(ax, 'Type', 'text').'
+        if ~isempty(item.String)
+            shapes{end+1} = text_polygon(item) - origin; %#ok<AGROW>
+        end
+    end
+    panels{k} = shapes;
+    delete(ax.Children);
+end
+end
+
+function [width, height] = category_label_extent(ax, labels, anchor, options)
+width = 0;
+height = 0;
+for k = 1:numel(labels)
+    atoms = text_layout(options, 'category_labels', k);
+    if isempty(atoms)
+        label = slice_text(ax, anchor(1), anchor(2), labels{k}, options, 'HorizontalAlignment', 'left');
+    else
+        label = scientific_slice_text(ax, anchor(1), anchor(2), atoms, options, ...
+            0, 'left', '', labels{k});
+    end
+    corners = zeros(0, 2);
+    for item = findall(label, 'Type', 'text').'
+        corners = [corners; text_polygon(item)]; %#ok<AGROW>
+    end
+    width = max(width, max(corners(:, 1)) - anchor(1));
+    height = max(height, 2 * max(abs(corners(:, 2) - anchor(2))));
+    delete(label);
+end
+end
+
+function corners = text_polygon(item)
+% Extent at zero rotation provides the measured rectangle in physical axes
+% units. Rotate its four corners so sheared labels can clear a nearby frame.
+item.Units = 'data';
+angle = item.Rotation;
+item.Rotation = 0;
+extent = item.Extent;
+anchor = item.Position(1:2);
+corners = extent(1:2) + [0 0; extent(3) 0; extent(3:4); 0 extent(4)];
+corners = (corners - anchor) * [cosd(angle), sind(angle); -sind(angle), cosd(angle)] + anchor;
+end
+
+function options = default_options()
+options = struct( ...
+    'columns', [], 'slice_width_mm', 23, 'slice_height_mm', 27, ...
+    'slice_drop_mm', 8, 'slice_gap_mm', 2.25, 'row_gap_mm', 9.75, ...
+    'margins_mm', [10.5, 5.25, 16.5, 4.5], ...
+    'figure_mm', [], 'colorbar_mm', [], ...
+    'x_limits', [], 'y_limits', [], 'x_ticks', [], 'y_ticks', [], ...
+    'x_label', 'x', 'y_label', 'y', 'panel_labels', {{}}, 'x_text_mode', 'each-slice', ...
+    'text_layouts', struct(), ...
+    'font_name', 'Times New Roman', 'font_size_pt', 8, ...
+    'label_interpreter', 'tex', 'title_interpreter', 'none', ...
+    'x_label_offset_mm', 5.1, 'y_label_offset_mm', 8, ...
+    'x_tick_offset_mm', 1, 'y_tick_offset_mm', 1.1, 'title_offset_mm', 2.1, ...
+    'tick_length_mm', 0.6, 'border_color', [0.65, 0.72, 0.77], 'line_width_pt', 0.4, ...
+    'figure_name', 'Slice Plots', 'visible', 'on', ...
+    'output_prefix', '', 'formats', {{'fig', 'png'}}, ...
+    'resolution', 600, 'preview_width_px', [], 'export_backend', 'auto');
+end
+
+function options = merge_options(given)
+assert(isstruct(given) && isscalar(given), 'BifurcationSlices:InvalidOptions', ...
+    'Options must be a scalar struct.');
+options = default_options();
+names = fieldnames(given);
+unknown = setdiff(names, fieldnames(options));
+assert(isempty(unknown), 'BifurcationSlices:UnknownOption', ...
+    'Unknown option: %s', strjoin(unknown, ', '));
+for k = 1:numel(names)
+    options.(names{k}) = given.(names{k});
+end
+end
+
+function [slices, categories] = validate_inputs(slices, categories)
+assert(isstruct(slices) && isvector(slices) && ~isempty(slices) && ...
+    all(isfield(slices, {'x', 'y', 'S'})), 'BifurcationSlices:InvalidSlices', ...
+    'Slices must be a nonempty struct vector with x, y, and S fields.');
+assert(isstruct(categories) && isscalar(categories) && ...
+    all(isfield(categories, {'codes', 'labels', 'colors'})), ...
+    'BifurcationSlices:InvalidCategories', 'Categories must contain codes, labels, and colors.');
+validateattributes(categories.codes, {'numeric'}, {'real', 'vector', 'finite', 'nonempty'});
+categories.codes = double(categories.codes(:).');
+labels = string(categories.labels);
+assert(isvector(labels) && all(~ismissing(labels) & strlength(labels) > 0) && ...
+    numel(labels) == numel(categories.codes) && ...
+    numel(unique(categories.codes)) == numel(categories.codes), ...
+    'BifurcationSlices:InvalidCategories', 'Category codes must be unique with one nonempty label per code.');
+categories.labels = cellstr(labels(:).');
+validateattributes(categories.colors, {'numeric'}, ...
+    {'real', 'finite', 'size', [numel(labels), 3], '>=', 0, '<=', 1});
+categories.colors = double(categories.colors);
+for k = 1:numel(slices)
+    validateattributes(slices(k).x, {'numeric'}, {'real', 'finite', 'vector'});
+    validateattributes(slices(k).y, {'numeric'}, {'real', 'finite', 'vector'});
+    slices(k).x = double(slices(k).x(:).');
+    slices(k).y = double(slices(k).y(:));
+    assert(numel(slices(k).x) >= 2 && numel(slices(k).y) >= 2 && ...
+        all(diff(slices(k).x) > 0) && all(diff(slices(k).y) > 0), ...
+        'BifurcationSlices:InvalidCoordinates', 'Slice %d coordinates must be strictly increasing, with at least two points.', k);
+    assert((isnumeric(slices(k).S) || islogical(slices(k).S)) && isreal(slices(k).S) && ...
+        isequal(size(slices(k).S), [numel(slices(k).y), numel(slices(k).x)]), ...
+        'BifurcationSlices:InvalidGrid', 'Slice %d rows must represent y and columns x.', k);
+    slices(k).S = double(slices(k).S);
+    assert(all(isfinite(slices(k).S(:))) && all(ismember(slices(k).S(:), categories.codes)), ...
+        'BifurcationSlices:InvalidCategory', 'Slice %d contains missing or unknown categories; provide an explicit missing-data mapping.', k);
+    if ~isfield(slices, 'title') || isempty(slices(k).title)
+        slices(k).title = '';
+    end
+    if ~isfield(slices, 'source_file') || isempty(slices(k).source_file)
+        slices(k).source_file = '';
+    end
+    if ~isfield(slices, 'metadata') || isempty(slices(k).metadata)
+        slices(k).metadata = struct();
+    end
+    assert(isstruct(slices(k).metadata) && isscalar(slices(k).metadata), ...
+        'BifurcationSlices:InvalidMetadata', 'Slice metadata must be a scalar struct.');
+    slices(k).title = text_scalar(slices(k).title, 'title');
+    slices(k).source_file = text_scalar(slices(k).source_file, 'source_file');
+end
+end
+
+function options = resolve_layout(slices, category_count, options)
+count = numel(slices);
+if isempty(options.columns)
+    options.columns = min(3, count);
+end
+validateattributes(options.columns, {'numeric'}, {'scalar', 'integer', 'positive', 'finite'});
+options.columns = min(options.columns, count);
+positive = {'slice_width_mm', 'slice_height_mm', 'font_size_pt'};
+for k = 1:numel(positive)
+    validateattributes(options.(positive{k}), {'numeric'}, {'scalar', 'real', 'positive', 'finite'});
+end
+nonnegative = {'slice_drop_mm', 'slice_gap_mm', 'row_gap_mm'};
+for k = 1:numel(nonnegative)
+    validateattributes(options.(nonnegative{k}), {'numeric'}, {'scalar', 'real', 'nonnegative', 'finite'});
+end
+validateattributes(options.margins_mm, {'numeric'}, {'real', 'finite', 'size', [1, 4], 'nonnegative'});
+rows = ceil(count / options.columns);
+minimum_width = options.margins_mm(1) + options.columns * options.slice_width_mm + ...
+    (options.columns - 1) * options.slice_gap_mm + options.margins_mm(3);
+minimum_height = sum(options.margins_mm([2, 4])) + ...
+    rows * (options.slice_height_mm + options.slice_drop_mm) + (rows - 1) * options.row_gap_mm;
+bar_height = max(options.slice_height_mm + options.slice_drop_mm - 3.75, ...
+    category_count * 3 * options.font_size_pt / 8);
+if isempty(options.figure_mm)
+    options.figure_mm = [minimum_width, max(minimum_height, bar_height + 10.8)];
+end
+validateattributes(options.figure_mm, {'numeric'}, {'real', 'finite', 'positive', 'size', [1, 2]});
+assert(all(options.figure_mm + 1e-10 >= [minimum_width, minimum_height]), ...
+    'BifurcationSlices:LayoutTooSmall', ...
+    'The figure must be at least %.3g-by-%.3g mm for this layout; adjust slice geometry or margins.', minimum_width, minimum_height);
+if isempty(options.colorbar_mm)
+    options.colorbar_mm = [minimum_width - options.margins_mm(3) + 3, ...
+        (options.figure_mm(2) - bar_height) / 2 - 1.35, 1.65, bar_height];
+end
+if isempty(options.x_limits)
+    options.x_limits = [min(arrayfun(@(s) s.x(1), slices)), max(arrayfun(@(s) s.x(end), slices))];
+end
+if isempty(options.y_limits)
+    options.y_limits = [min(arrayfun(@(s) s.y(1), slices)), max(arrayfun(@(s) s.y(end), slices))];
+end
+validateattributes(options.x_limits, {'numeric'}, {'real', 'finite', 'size', [1, 2], 'increasing'});
+validateattributes(options.y_limits, {'numeric'}, {'real', 'finite', 'size', [1, 2], 'increasing'});
+for k = 1:count
+    assert(slices(k).x(1) >= options.x_limits(1) && slices(k).x(end) <= options.x_limits(2) && ...
+        slices(k).y(1) >= options.y_limits(1) && slices(k).y(end) <= options.y_limits(2), ...
+        'BifurcationSlices:ClippedData', 'Configured axis limits would clip slice %d.', k);
+end
+if isempty(options.x_ticks)
+    options.x_ticks = linspace(options.x_limits(1), options.x_limits(2), 5);
+end
+if isempty(options.y_ticks)
+    options.y_ticks = linspace(options.y_limits(1), options.y_limits(2), 5);
+end
+if isempty(options.panel_labels)
+    options.panel_labels = arrayfun(@panel_label, 1:count, 'UniformOutput', false);
+else
+    options.panel_labels = cellstr(string(options.panel_labels));
+end
+end
+
+function validate_options(options, count, category_count)
+assert(any(strcmp(text_scalar(options.x_text_mode, 'x_text_mode'), ...
+    {'each-slice', 'bottom-per-column'})), 'BifurcationSlices:InvalidXTextMode', ...
+    'x_text_mode must be each-slice or bottom-per-column.');
+assert(any(strcmpi(listfonts, options.font_name)), 'BifurcationSlices:MissingFont', ...
+    'The requested font, %s, is not installed.', options.font_name);
+validateattributes(options.colorbar_mm, {'numeric'}, {'real', 'finite', 'size', [1, 4]});
+b = options.colorbar_mm;
+assert(all(b(1:2) >= 0) && all(b(3:4) > 0) && all(b(1:2) + b(3:4) <= options.figure_mm), ...
+    'BifurcationSlices:ColorbarOutsideFigure', 'Colorbar position must lie within the figure.');
+assert(b(4) / category_count >= options.font_size_pt * 25.4 / 72, ...
+    'BifurcationSlices:ColorbarTooShort', 'Increase colorbar height to provide at least one font point-height per category.');
+assert(numel(options.panel_labels) == count, 'BifurcationSlices:PanelLabels', ...
+    'Supply one panel label per slice.');
+validateattributes(options.x_ticks, {'numeric'}, {'real', 'finite', 'vector', 'increasing'});
+validateattributes(options.y_ticks, {'numeric'}, {'real', 'finite', 'vector', 'increasing'});
+assert(all(options.x_ticks >= options.x_limits(1) & options.x_ticks <= options.x_limits(2)) && ...
+    all(options.y_ticks >= options.y_limits(1) & options.y_ticks <= options.y_limits(2)), ...
+    'BifurcationSlices:InvalidTicks', 'Ticks must lie within their axis limits.');
+names = {'x_label_offset_mm', 'y_label_offset_mm', 'x_tick_offset_mm', ...
+    'y_tick_offset_mm', 'title_offset_mm', 'tick_length_mm', 'line_width_pt'};
+for k = 1:numel(names)
+    validateattributes(options.(names{k}), {'numeric'}, {'real', 'scalar', 'finite', 'nonnegative'});
+end
+validateattributes(options.border_color, {'numeric'}, {'size', [1, 3], 'real', 'finite', '>=', 0, '<=', 1});
+validateattributes(options.resolution, {'numeric'}, {'scalar', 'integer', 'positive', 'finite'});
+if ~isempty(options.preview_width_px)
+    validateattributes(options.preview_width_px, {'numeric'}, {'scalar', 'integer', 'positive', 'finite'});
+end
+assert(ismember(string(options.visible), ["on", "off"]), ...
+    'BifurcationSlices:InvalidVisibility', 'Visible must be on or off.');
+assert(all(ismember(string(options.formats), ["fig", "png"])), ...
+    'BifurcationSlices:UnsupportedFormat', 'Supported export formats are fig and png.');
+backend = text_scalar(options.export_backend, 'export_backend');
+assert(any(strcmp(backend, {'auto', 'exportgraphics', 'print'})), ...
+    'BifurcationSlices:InvalidExportBackend', ...
+    'Export backend must be auto, exportgraphics, or print.');
+assert(ismember(string(options.title_interpreter), ["none", "tex"]) && ...
+    ismember(string(options.label_interpreter), ["none", "tex"]), ...
+    'BifurcationSlices:InvalidInterpreter', 'Use none or tex to retain the requested font.');
+validate_text_layouts(options.text_layouts, count, category_count);
+end
+
+function validate_text_layouts(layouts, count, category_count)
+assert(isstruct(layouts) && isscalar(layouts), ...
+    'BifurcationSlices:InvalidTextLayouts', 'text_layouts must be a scalar struct.');
+allowed = {'x_label', 'y_label', 'panel_labels', 'slice_titles', 'category_labels'};
+assert(all(ismember(fieldnames(layouts), allowed)), ...
+    'BifurcationSlices:InvalidTextLayouts', 'Unknown text_layouts field.');
+for name = {'x_label', 'y_label'}
+    if isfield(layouts, name{1}) && ~isempty(layouts.(name{1}))
+        validate_atoms(layouts.(name{1}));
+    end
+end
+for name = {'panel_labels', 'slice_titles', 'category_labels'}
+    if ~isfield(layouts, name{1}) || isempty(layouts.(name{1}))
+        continue;
+    end
+    entries = layouts.(name{1});
+    expected = count;
+    if strcmp(name{1}, 'category_labels')
+        expected = category_count;
+    end
+    assert(iscell(entries) && isvector(entries) && numel(entries) == expected, ...
+        'BifurcationSlices:TextLayoutCount', ...
+        'text_layouts.%s must be a cell vector with %d entries.', name{1}, expected);
+    for k = 1:numel(entries)
+        if ~isempty(entries{k})
+            validate_atoms(entries{k});
+        end
+    end
+end
+end
+
+function validate_atoms(atoms)
+assert(isstruct(atoms) && isvector(atoms) && ~isempty(atoms) && isfield(atoms, 'text'), ...
+    'BifurcationSlices:InvalidTextLayouts', 'Each nonempty layout must be a scientific text atom vector.');
+end
+
+function label = panel_label(index)
+letters = '';
+while index > 0
+    letters = [char('a' + mod(index - 1, 26)), letters]; %#ok<AGROW>
+    index = floor((index - 1) / 26);
+end
+label = ['(', letters, ')'];
+end
+
+function value = text_scalar(value, field)
+assert((ischar(value) && (isrow(value) || isempty(value))) || (isstring(value) && isscalar(value) && ~ismissing(value)), ...
+    'BifurcationSlices:InvalidText', '%s must be a text scalar.', field);
+value = char(value);
+end
+
+function edges = sample_edges(samples)
+samples = samples(:).';
+edges = [samples(1), samples(1:end-1) + diff(samples) / 2, samples(end)];
+end
+
+function [x, y] = coordinates(a, f, origin, options)
+u = (a - options.x_limits(1)) / diff(options.x_limits);
+v = (f - options.y_limits(1)) / diff(options.y_limits);
+x = origin(1) + options.slice_width_mm * u;
+y = origin(2) + options.slice_height_mm * v - options.slice_drop_mm * u;
+end
+
+function draw_labels(ax, origin, index, count, title, options)
+a = options.x_limits;
+f = options.y_limits;
+row_start = mod(index - 1, options.columns) == 0;
+show_x_text = strcmp(options.x_text_mode, 'each-slice') || index + options.columns > count;
+[x, y] = coordinates(a([1, 2, 2, 1, 1]), f([1, 1, 2, 2, 1]), origin, options);
+plot(ax, x, y, 'Color', options.border_color, 'LineWidth', options.line_width_pt, ...
+    'Tag', sprintf('slice_border_%d', index));
+angle = -atan2d(options.slice_drop_mm, options.slice_width_mm);
+for tick = options.x_ticks(:).'
+    [x, y] = coordinates(tick, f(1), origin, options);
+    plot(ax, [x, x], [y, y - options.tick_length_mm], 'k-', 'LineWidth', options.line_width_pt, ...
+        'Tag', sprintf('x_tick_mark_%d', index));
+    if show_x_text
+        slice_text(ax, x, y - options.x_tick_offset_mm, numeric_tick_label(tick), options, ...
+            'VerticalAlignment', 'top', 'Rotation', angle, 'Tag', sprintf('x_tick_%d', index));
+    end
+end
+if show_x_text
+    [x, y] = coordinates(mean(a), f(1), origin, options);
+    atoms = text_layout(options, 'x_label');
+    if isempty(atoms)
+        slice_text(ax, x, y - options.x_label_offset_mm, options.x_label, options, ...
+            'Interpreter', options.label_interpreter, 'Rotation', angle, 'Tag', sprintf('x_label_%d', index));
+    else
+        scientific_slice_text(ax, x, y - options.x_label_offset_mm, atoms, options, ...
+            angle, 'center', sprintf('x_label_%d', index), options.x_label);
+    end
+end
+[x, y] = coordinates(mean(a), f(2), origin, options);
+label = strtrim([options.panel_labels{index}, ' ', title]);
+panel_atoms = text_layout(options, 'panel_labels', index);
+title_atoms = text_layout(options, 'slice_titles', index);
+if isempty(panel_atoms) && isempty(title_atoms)
+    slice_text(ax, x, y + options.title_offset_mm, label, options, ...
+        'Interpreter', options.title_interpreter, 'Rotation', angle, 'Tag', sprintf('panel_label_%d', index));
+else
+    if isempty(panel_atoms) && ~isempty(options.panel_labels{index})
+        panel_atoms = literal_title_atom(options.panel_labels{index}, options);
+    end
+    if isempty(title_atoms) && ~isempty(title)
+        title_atoms = literal_title_atom(title, options);
+    end
+    if isempty(panel_atoms)
+        atoms = title_atoms;
+    elseif isempty(title_atoms)
+        atoms = panel_atoms;
+    else
+        % A visible title run retains the separator advance in native SVG;
+        % whitespace-only runs can be omitted by the MATLAB exporter.
+        title_atoms(1).text = [' ', text_scalar(title_atoms(1).text, 'title atom text')];
+        atoms = concatenate_atoms(panel_atoms, title_atoms);
+    end
+    scientific_slice_text(ax, x, y + options.title_offset_mm, atoms, options, ...
+        angle, 'center', sprintf('panel_label_%d', index), label);
+end
+if row_start
+    for tick = options.y_ticks(:).'
+        [x, y] = coordinates(a(1), tick, origin, options);
+        plot(ax, [x - options.tick_length_mm, x], [y, y], 'k-', 'LineWidth', options.line_width_pt);
+        slice_text(ax, x - options.y_tick_offset_mm, y, numeric_tick_label(tick), options, ...
+            'HorizontalAlignment', 'right', 'Tag', sprintf('y_tick_%d', index));
+    end
+    [x, y] = coordinates(a(1), mean(f), origin, options);
+    atoms = text_layout(options, 'y_label');
+    if isempty(atoms)
+        slice_text(ax, x - options.y_label_offset_mm, y, options.y_label, options, ...
+            'Interpreter', options.label_interpreter, 'Rotation', 90, 'Tag', sprintf('y_label_%d', index));
+    else
+        scientific_slice_text(ax, x - options.y_label_offset_mm, y, atoms, options, ...
+            90, 'center', sprintf('y_label_%d', index), options.y_label);
+    end
+end
+end
+
+function atom = literal_title_atom(value, options)
+% A mixed rich/native title must not flatten interpreted legacy TeX.
+requires_interpretation = strcmp(options.title_interpreter, 'tex') && ...
+    ~isempty(regexp(value, '[\\_^{}]', 'once'));
+assert(~requires_interpretation, 'BifurcationSlices:MixedTextLayouts', ...
+    ['A structured panel/title has a fallback part containing TeX markup. ', ...
+    'Supply explicit text_layouts atoms for that part as well.']);
+atom = struct('text', value);
+end
+
+function atoms = text_layout(options, field, index)
+atoms = [];
+if ~isfield(options.text_layouts, field) || isempty(options.text_layouts.(field))
+    return;
+end
+atoms = options.text_layouts.(field);
+if nargin > 2
+    atoms = atoms{index};
+end
+end
+
+function atoms = concatenate_atoms(varargin)
+% A literal prefix or suffix is not interpreted as mathematical markup.
+fields = {'text'};
+for k = 1:nargin
+    fields = union(fields, fieldnames(varargin{k}), 'stable');
+end
+atoms = [];
+for k = 1:nargin
+    part = varargin{k}(:).';
+    for f = 1:numel(fields)
+        if ~isfield(part, fields{f})
+            [part.(fields{f})] = deal([]);
+        end
+    end
+    part = orderfields(part, fields);
+    if isempty(atoms)
+        atoms = part;
+    else
+        atoms = [atoms, part]; %#ok<AGROW>
+    end
+end
+end
+
+function group = scientific_slice_text(ax, x, y, atoms, options, rotation, alignment, tag, original)
+% Convert the existing drawing-axis anchor, including its plot-box mapping,
+% to the physical coordinates accepted by the shared text compositor.
+probe = slice_text(ax, x, y, '', options, 'Visible', 'off');
+probe.Units = 'points';
+anchor = probe.Position(1:2);
+delete(probe);
+text_options = struct('font_name', options.font_name, ...
+    'font_size_pt', options.font_size_pt, 'color', [0, 0, 0], ...
+    'rotation', rotation, 'horizontal_alignment', alignment, ...
+    'vertical_alignment', 'middle', 'subscript_raise_pt', 1, 'tag', tag);
+[group, ~] = draw_scientific_text(ax, anchor, atoms, text_options);
+data = group.UserData;
+if isempty(data)
+    data = struct();
+end
+data.original_display_text = original;
+group.UserData = data;
+end
+
+function draw_category_labels(ax, cb, categories, options)
+entries = text_layout(options, 'category_labels');
+if isempty(entries) || all(cellfun(@isempty, entries))
+    return;
+end
+drawnow;
+native_labels = categories.labels;
+position = cb.Position .* options.figure_mm([1, 2, 1, 2]);
+right_edge = position(1) + position(3);
+for k = 1:numel(categories.codes)
+    atoms = text_layout(options, 'category_labels', k);
+    if isempty(atoms)
+        continue;
+    end
+    native_labels{k} = '';
+    y = position(2) + position(4) * (k - 0.5) / numel(categories.codes);
+    group = scientific_slice_text(ax, right_edge + 1, y, atoms, options, ...
+        0, 'left', sprintf('category_label_%d', k), categories.labels{k});
+    data = group.UserData;
+    data.category_index = k;
+    data.category_code = categories.codes(k);
+    group.UserData = data;
+end
+cb.TickLabels = native_labels;
+cb.UserData = struct('category_codes', categories.codes, ...
+    'category_labels', {categories.labels}, 'text_layouts', {entries});
+end
+
+function label = numeric_tick_label(value)
+% Replace only signs in the numeric display string, including exponents.
+label = strrep(sprintf('%g', value), '-', char(8722));
+end
+
+function h = slice_text(ax, x, y, label, options, varargin)
+h = text(ax, x, y, label, 'FontName', options.font_name, 'FontUnits', 'points', ...
+    'FontSize', options.font_size_pt, 'FontWeight', 'normal', 'Color', 'k', ...
+    'Interpreter', 'none', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
+    'Clipping', 'off', varargin{:});
+end
+
+function check_text_bounds(ax, cb, labels, options)
+for h = findall(ax, 'Type', 'text').'
+    if isempty(h.String)
+        continue;
+    end
+    units = h.Units;
+    h.Units = 'data';
+    e = h.Extent;
+    h.Units = units;
+    assert(e(1) >= 0 && e(2) >= 0 && e(1) + e(3) <= options.figure_mm(1) && ...
+        e(2) + e(4) <= options.figure_mm(2), 'BifurcationSlices:TextOutsideFigure', ...
+        'Text %s lies outside the figure; adjust margins or label offsets.', h.Tag);
+end
+% Colorbar tick labels are not regular Text children. Measure their strings
+% in the same font and reserve a conservative gap after the bar.
+probe = slice_text(ax, 0, 0, '', options, 'Visible', 'off', 'HorizontalAlignment', 'left');
+cleanup = onCleanup(@() delete(probe));
+widest = 0;
+for k = 1:numel(labels)
+    if ~isempty(text_layout(options, 'category_labels', k))
+        % The editable replacement is included in the Text bounds above.
+        % Keep this native-label probe limited to labels still on the bar.
+        continue;
+    end
+    probe.String = labels{k};
+    widest = max(widest, probe.Extent(3));
+end
+right_edge = (cb.Position(1) + cb.Position(3)) * options.figure_mm(1);
+assert(right_edge + 1 + widest <= options.figure_mm(1), ...
+    'BifurcationSlices:ColorbarLabelsOutsideFigure', ...
+    'Colorbar labels need more room; increase the right margin or move the colorbar left.');
+end
+
+function export_outputs(fig, options)
+prefix = text_scalar(options.output_prefix, 'output_prefix');
+if isempty(prefix)
+    return;
+end
+parent = fileparts(prefix);
+if ~isempty(parent) && ~isfolder(parent)
+    mkdir(parent);
+end
+fig.PaperUnits = 'centimeters';
+fig.PaperSize = options.figure_mm / 10;
+fig.PaperPosition = [0, 0, options.figure_mm / 10];
+fig.PaperPositionMode = 'manual';
+if any(strcmp(options.formats, 'png')) || ~isempty(options.preview_width_px)
+    backend = resolve_png_backend(options.export_backend);
+    fig.UserData.export_backend = backend;
+end
+if any(strcmp(options.formats, 'png'))
+    export_png(fig, [prefix, '.png'], options.resolution, options, backend);
+end
+if any(strcmp(options.formats, 'fig'))
+    savefig(fig, [prefix, '.fig']);
+end
+if ~isempty(options.preview_width_px)
+    width = options.preview_width_px;
+    % Keep the physical canvas unchanged so text and colorbar layout match
+    % the main export. MATLAB requires an integer resolution, so the target
+    % preview width can differ slightly after DPI and pixel rounding.
+    export_png(fig, [prefix, '_preview.png'], ...
+        max(1, round(width * 25.4 / options.figure_mm(1))), options, backend);
+end
+fprintf('Output prefix: %s\n', prefix);
+end
+
+function backend = resolve_png_backend(requested)
+backend = char(requested);
+modern_export = ~verLessThan('matlab', '25.1');
+if strcmp(backend, 'auto')
+    if modern_export
+        backend = 'exportgraphics';
+    else
+        backend = 'print';
+    end
+end
+assert(~strcmp(backend, 'exportgraphics') || modern_export, ...
+    'BifurcationSlices:UnsupportedExportBackend', ...
+    'Sized exportgraphics requires MATLAB R2025a or later; use auto or print.');
+end
+
+function export_png(fig, filename, resolution, options, backend)
+% Both PNG outputs keep the full physical canvas, without automatic cropping.
+if strcmp(backend, 'exportgraphics')
+    exportgraphics(fig, filename, 'Resolution', resolution, ...
+        'Units', 'centimeters', 'Width', options.figure_mm(1) / 10, ...
+        'Height', options.figure_mm(2) / 10, ...
+        'Padding', 'figure', 'BackgroundColor', 'white');
+else
+    % PaperPosition and PaperSize specify the full canvas on older releases.
+    print(fig, filename, '-dpng', sprintf('-r%d', resolution));
+end
+end
